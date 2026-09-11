@@ -85,6 +85,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows
 
         private static void _setStartFillItem(IReadOnlyList<string> values, Settings settings)
         {
+            FillTextHelper.ResetFill();
             FillTextHelper.SetFillItem(FillTextHelper.ToFillTextItem(values, settings));
         }
 
