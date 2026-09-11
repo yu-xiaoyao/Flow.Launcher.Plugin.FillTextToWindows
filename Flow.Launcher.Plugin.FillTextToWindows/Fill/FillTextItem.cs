@@ -23,7 +23,7 @@ public class FillTextItem
     public int PasteDelayMs { get; set; }
 
     /// <summary>
-    /// 填充完成后把剪贴板还原成原来的文本
+    /// 填充完成后把剪贴板还原成填充之前的内容
     /// </summary>
     public bool RestoreClipboard { get; set; }
 

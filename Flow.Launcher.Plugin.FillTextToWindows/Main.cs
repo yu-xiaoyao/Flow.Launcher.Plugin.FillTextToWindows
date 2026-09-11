@@ -80,7 +80,19 @@ namespace Flow.Launcher.Plugin.FillTextToWindows
 
         private void StartFill()
         {
-            _ = Task.Run(FillTextHelper.StartFill);
+            // 用 _ = 丢掉 Task 的话异常只会变成「Unobserved task exception」，
+            // 这里自己接住，日志里能直接看到是填充的哪一步炸的。
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await FillTextHelper.StartFill();
+                }
+                catch (Exception ex)
+                {
+                    InnerLogger.Logger.Error("填充过程中出错. ", ex);
+                }
+            });
         }
 
         private static void _setStartFillItem(IReadOnlyList<string> values, Settings settings)

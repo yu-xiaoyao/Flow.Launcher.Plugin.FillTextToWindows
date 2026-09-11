@@ -75,8 +75,8 @@ namespace Flow.Launcher.Plugin.FillTextToWindows
         }
 
         /// <summary>
-        /// 填充完成后是否把剪贴板还原成原来的文本内容。
-        /// 只对文本内容有效，原来的图片 / 文件等非文本内容无法还原。
+        /// 填充完成后是否把剪贴板还原成填充之前的内容。
+        /// 文本、HTML、复制的文件等格式都能还原；图片这类存的是 GDI 句柄的格式还原不了。
         /// </summary>
         public bool RestoreClipboard
         {

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net7.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <AssemblyName>Flow.Launcher.Plugin.FillTextToWindows</AssemblyName>
     <PackageId>Flow.Launcher.Plugin.FillTextToWindows</PackageId>
     <Authors>yu-xiaoyao</Authors>
@@ -36,6 +36,11 @@
     <!-- 4.7.0 起 PluginMetadata 才有 PluginSettingsDirectoryPath，数据库靠它定位 -->
     <PackageReference Include="Flow.Launcher.Plugin" Version="4.7.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- TestDemo 里要直接测 Interop/ClipboardHelper 这些 internal 类型 -->
+    <InternalsVisibleTo Include="TestDemo" />
   </ItemGroup>
 
 </Project>

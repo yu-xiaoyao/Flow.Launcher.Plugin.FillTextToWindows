@@ -8,4 +8,21 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <!-- 默认不引用插件工程，TestDemo 还是那个干净的空壳；要跑剪贴板测试再加 -p:WithClipboardTest=true -->
+    <WithClipboardTest Condition="'$(WithClipboardTest)' == ''">false</WithClipboardTest>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(WithClipboardTest)' == 'true'">
+    <DefineConstants>$(DefineConstants);WITH_CLIPBOARD_TEST</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(WithClipboardTest)' == 'true'">
+    <ProjectReference Include="..\Flow.Launcher.Plugin.FillTextToWindows\Flow.Launcher.Plugin.FillTextToWindows.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(WithClipboardTest)' != 'true'">
+    <Compile Remove="ClipboardSnapshotTest.cs" />
+  </ItemGroup>
+
 </Project>

@@ -13,6 +13,34 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Interop
 
         public const uint CF_UNICODETEXT = 13;
 
+        // 下面这些格式 GetClipboardData 返回的要么是 GDI 句柄、要么是系统即时合成的，
+        // 都不是可以拷走字节的 HGLOBAL，枚举剪贴板时跳过。
+        public const uint CF_BITMAP = 2;
+
+        public const uint CF_METAFILEPICT = 3;
+
+        public const uint CF_PALETTE = 9;
+
+        public const uint CF_ENHMETAFILE = 14;
+
+        public const uint CF_OWNERDISPLAY = 0x0080;
+
+        public const uint CF_DSPTEXT = 0x0081;
+
+        public const uint CF_DSPBITMAP = 0x0082;
+
+        public const uint CF_DSPMETAFILEPICT = 0x0083;
+
+        public const uint CF_DSPENHMETAFILE = 0x008E;
+
+        public const uint CF_PRIVATEFIRST = 0x0200;
+
+        public const uint CF_PRIVATELAST = 0x02FF;
+
+        public const uint CF_GDIOBJFIRST = 0x0300;
+
+        public const uint CF_GDIOBJLAST = 0x03FF;
+
         public const uint GMEM_MOVEABLE = 0x0002;
 
         [DllImport("user32.dll", SetLastError = true)]
@@ -33,6 +61,10 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Interop
         [DllImport("user32.dll", SetLastError = true)]
         public static extern IntPtr GetClipboardData(uint uFormat);
 
+        /// <summary>按顺序枚举剪贴板里的格式，传 0 拿第一个，之后传上一次的返回值，返回 0 表示结束。</summary>
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern uint EnumClipboardFormats(uint format);
+
         [DllImport("user32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool IsClipboardFormatAvailable(uint format);
@@ -45,6 +77,9 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Interop
 
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern IntPtr GlobalLock(IntPtr hMem);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern UIntPtr GlobalSize(IntPtr hMem);
 
         [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]

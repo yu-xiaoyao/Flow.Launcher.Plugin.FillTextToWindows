@@ -142,7 +142,7 @@
             Grid.Column="0"
             Grid.ColumnSpan="3"
             Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
-            Content="填充完成后把剪贴板还原成原来的文本"
+            Content="填充完成后把剪贴板还原成原来的内容"
             IsChecked="{Binding Settings.RestoreClipboard}" />
 
         <!--  语法说明  -->

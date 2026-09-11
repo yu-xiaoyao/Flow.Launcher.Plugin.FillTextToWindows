@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Windows;
 using Flow.Launcher.Plugin.FillTextToWindows.Interop;
 using Flow.Launcher.Plugin.FillTextToWindows.Keys;
 using Flow.Launcher.Plugin.FillTextToWindows.Util;
@@ -29,6 +28,12 @@ public class FillTextHelper
         var metadata = _metadata;
         InnerLogger.Logger.Debug($"开始填充. metadata = {metadata}");
         if (metadata == null) return;
+        if (!metadata.TryStart())
+        {
+            InnerLogger.Logger.Debug("这次填充已经被别的后台任务接管, 跳过。");
+            return;
+        }
+
         // Timeout....
         if (DateTime.Now - metadata.StartTime <= TimeSpan.FromSeconds(10))
         {
@@ -38,10 +43,12 @@ public class FillTextHelper
 
     public static async Task StartFillTextAsync(FillTextTaskMetadata metadata)
     {
-        IDataObject clipboardOriginObject = null;
+        ClipboardHelper.ClipboardSnapshot clipboardOrigin = null;
         if (metadata.Item.RestoreClipboard)
         {
-            clipboardOriginObject = Clipboard.GetDataObject();
+            // 这里跑在 Task.Run 的线程池线程（MTA）上，只能用裸 Win32 剪贴板，
+            // WPF 的 System.Windows.Clipboard 要求 STA，会直接抛 ThreadStateException。
+            clipboardOrigin = ClipboardHelper.Capture();
         }
 
         InnerLogger.Logger.Trace("开始填充任务");
@@ -49,11 +56,23 @@ public class FillTextHelper
         await DoStartFillTextAsync(metadata);
 
         // restore Clipboard Object
-        if (clipboardOriginObject != null)
+        if (clipboardOrigin == null)
         {
-            InnerLogger.Logger.Trace("填充结束. 恢复原始剪贴板数据");
+            return;
+        }
 
-            Clipboard.SetDataObject(clipboardOriginObject);
+        if (!ReferenceEquals(_metadata, metadata))
+        {
+            // 已经换了一个新的填充任务（或者被 Reset 了），这时候还原会把新任务刚写进去的内容覆盖掉
+            InnerLogger.Logger.Trace("填充已被新任务接管. 跳过恢复剪贴板");
+            return;
+        }
+
+        InnerLogger.Logger.Trace("填充结束. 恢复原始剪贴板数据");
+
+        if (!ClipboardHelper.Restore(clipboardOrigin))
+        {
+            InnerLogger.Logger.Warn("恢复剪贴板失败（可能被其它程序占用）。");
         }
     }
 
