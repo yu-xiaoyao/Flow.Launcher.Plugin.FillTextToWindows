@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Flow.Launcher.Plugin.FillTextToWindows/Flow.Launcher.Plugin.FillTextToWindows.csproj" />
+  <Project Path="TestDemo/TestDemo.csproj" />
+</Solution>

@@ -1,0 +1,177 @@
+<UserControl
+    x:Class="Flow.Launcher.Plugin.FillTextToWindows.Views.SettingsControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="clr-namespace:Flow.Launcher.Plugin.FillTextToWindows.ViewModels"
+    d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}"
+    d:DesignHeight="420"
+    d:DesignWidth="660"
+    mc:Ignorable="d">
+
+    <Grid Margin="{StaticResource SettingPanelMargin}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" MinWidth="180" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!--  开始粘贴之前  -->
+        <TextBlock
+            Grid.Row="0"
+            Grid.Column="0"
+            Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
+            VerticalAlignment="Center"
+            Text="开始前先发送的按键" />
+        <TextBox
+            Grid.Row="0"
+            Grid.Column="1"
+            Margin="{StaticResource SettingPanelItemTopBottomMargin}"
+            MinWidth="{StaticResource SettingPanelTextBoxMinWidth}"
+            Text="{Binding LeadingKeys.Text, UpdateSourceTrigger=PropertyChanged}" />
+        <TextBlock
+            Grid.Row="0"
+            Grid.Column="2"
+            Margin="9,4.5,0,4.5"
+            VerticalAlignment="Center"
+            FontSize="12"
+            Foreground="{DynamicResource Color04B}"
+            Text="{Binding LeadingKeys.Preview}" />
+
+        <!--  切换输入框  -->
+        <TextBlock
+            Grid.Row="1"
+            Grid.Column="0"
+            Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
+            VerticalAlignment="Center"
+            Text="切换输入框的按键" />
+        <TextBox
+            Grid.Row="1"
+            Grid.Column="1"
+            Margin="{StaticResource SettingPanelItemTopBottomMargin}"
+            MinWidth="{StaticResource SettingPanelTextBoxMinWidth}"
+            Text="{Binding NextFieldKeys.Text, UpdateSourceTrigger=PropertyChanged}" />
+        <TextBlock
+            Grid.Row="1"
+            Grid.Column="2"
+            Margin="9,4.5,0,4.5"
+            VerticalAlignment="Center"
+            FontSize="12"
+            Foreground="{DynamicResource Color04B}"
+            Text="{Binding NextFieldKeys.Preview}" />
+
+        <!--  最后一段之后  -->
+        <TextBlock
+            Grid.Row="2"
+            Grid.Column="0"
+            Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
+            VerticalAlignment="Center"
+            Text="最后一段之后的按键" />
+        <TextBox
+            Grid.Row="2"
+            Grid.Column="1"
+            Margin="{StaticResource SettingPanelItemTopBottomMargin}"
+            MinWidth="{StaticResource SettingPanelTextBoxMinWidth}"
+            Text="{Binding LastFieldKeys.Text, UpdateSourceTrigger=PropertyChanged}" />
+        <TextBlock
+            Grid.Row="2"
+            Grid.Column="2"
+            Margin="9,4.5,0,4.5"
+            VerticalAlignment="Center"
+            FontSize="12"
+            Foreground="{DynamicResource Color04B}"
+            Text="{Binding LastFieldKeys.Preview}" />
+
+        <!--  粘贴后等待  -->
+        <TextBlock
+            Grid.Row="3"
+            Grid.Column="0"
+            Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
+            VerticalAlignment="Center"
+            Text="粘贴后等待（毫秒）" />
+        <TextBox
+            Grid.Row="3"
+            Grid.Column="1"
+            Margin="{StaticResource SettingPanelItemTopBottomMargin}"
+            MinWidth="{StaticResource SettingPanelTextBoxMinWidth}"
+            Text="{Binding Settings.PasteDelayMs}" />
+        <TextBlock
+            Grid.Row="3"
+            Grid.Column="2"
+            Margin="9,4.5,0,4.5"
+            VerticalAlignment="Center"
+            FontSize="12"
+            Foreground="{DynamicResource Color04B}"
+            Text="目标程序处理 Ctrl+V 的时间，卡顿时调大" />
+
+        <!--  按键间隔  -->
+        <TextBlock
+            Grid.Row="4"
+            Grid.Column="0"
+            Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
+            VerticalAlignment="Center"
+            Text="按键间隔（毫秒）" />
+        <TextBox
+            Grid.Row="4"
+            Grid.Column="1"
+            Margin="{StaticResource SettingPanelItemTopBottomMargin}"
+            MinWidth="{StaticResource SettingPanelTextBoxMinWidth}"
+            Text="{Binding Settings.KeyDelayMs}" />
+        <TextBlock
+            Grid.Row="4"
+            Grid.Column="2"
+            Margin="9,4.5,0,4.5"
+            VerticalAlignment="Center"
+            FontSize="12"
+            Foreground="{DynamicResource Color04B}"
+            Text="连续按键之间的间隔，漏键时调大" />
+
+        <!--  还原剪贴板  -->
+        <CheckBox
+            Grid.Row="5"
+            Grid.Column="0"
+            Grid.ColumnSpan="3"
+            Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
+            Content="填充完成后把剪贴板还原成原来的文本"
+            IsChecked="{Binding Settings.RestoreClipboard}" />
+
+        <!--  语法说明  -->
+        <StackPanel
+            Grid.Row="6"
+            Grid.Column="0"
+            Grid.ColumnSpan="3"
+            Margin="0,12,0,0">
+            <Separator Style="{StaticResource SettingPanelSeparatorStyle}" />
+            <TextBlock
+                Margin="0,12,0,0"
+                Style="{StaticResource SettingPanelTextBlockDescriptionStyle}"
+                Text="按键写法" />
+            <TextBlock
+                Margin="0,4,0,0"
+                Style="{StaticResource SettingPanelTextBlockDescriptionStyle}"
+                Text="一个组合里用 + 连接修饰键和主键；要连按几个键就用逗号隔开，例如 Down, Down, Enter。不区分大小写。" />
+            <TextBlock
+                Margin="0,4,0,0"
+                Style="{StaticResource SettingPanelTextBlockDescriptionStyle}"
+                Text="整个键盘都能写：字母数字、F1～F24、小键盘 Num0～Num9、方向键、Tab ／ Enter ／ Esc ／ Space ／ Backspace ／ Delete ／ Home ／ End ／ PageUp ／ Insert ／ PrtSc，标点就写那个字符本身（, - [ ; ' / 等），修饰键 Ctrl ／ Alt ／ Shift ／ Win。" />
+            <TextBlock
+                Margin="0,4,0,0"
+                Style="{StaticResource SettingPanelTextBlockDescriptionStyle}"
+                Text="+ 、逗号和 \ 本身也是按键，写的时候前面加一个 \ 转义：Ctrl + \+ 是「按住 Ctrl 再按加号键」，存下来就是 Ctrl+\+。" />
+            <TextBlock
+                Margin="0,4,0,0"
+                Style="{StaticResource SettingPanelTextBlockDescriptionStyle}"
+                Text="示例：Ctrl+A, Delete（先全选再删除）　Ctrl+Home（回到开头）　Shift+Tab（回上一个输入框）" />
+        </StackPanel>
+    </Grid>
+</UserControl>

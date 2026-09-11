@@ -1,0 +1,12 @@
+{
+    "ID": "8A56E435-7E85-46FB-BA5A-7CF606F56E0F",
+    "ActionKeyword": "ftw",
+    "Name": "FillTextToWindows",
+    "Description": "Fill text to last software Windows",
+    "Author": "yu-xiaoyao",
+    "Version": "1.0.0",
+    "Language": "csharp",
+    "Website": "https://github.com/yu-xiaoyao/Flow.Launcher.Plugin.FillTextToWindows",
+    "IcoPath": "Images/FillTextToWindows.png",
+    "ExecuteFileName": "Flow.Launcher.Plugin.FillTextToWindows.dll"
+}

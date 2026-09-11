@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0-windows</TargetFramework>
+    <AssemblyName>Flow.Launcher.Plugin.FillTextToWindows</AssemblyName>
+    <PackageId>Flow.Launcher.Plugin.FillTextToWindows</PackageId>
+    <Authors>yu-xiaoyao</Authors>
+    <PackageProjectUrl>https://github.com/yu-xiaoyao/Flow.Launcher.Plugin.FillTextToWindows</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/yu-xiaoyao/Flow.Launcher.Plugin.FillTextToWindows</RepositoryUrl>
+    <PackageTags>flow-launcher flow-plugin</PackageTags>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- 设置面板需要 WPF（ISettingProvider 返回 System.Windows.Controls.Control） -->
+    <UseWPF>true</UseWPF>
+    <!-- 163 个公开成员不写 XML 注释的提示没必要刷屏 -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DebugSymbols>false</DebugSymbols>
+    <DebugType>None</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="plugin.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\\*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 4.7.0 起 PluginMetadata 才有 PluginSettingsDirectoryPath，数据库靠它定位 -->
+    <PackageReference Include="Flow.Launcher.Plugin" Version="4.7.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.1" />
+  </ItemGroup>
+
+</Project>
