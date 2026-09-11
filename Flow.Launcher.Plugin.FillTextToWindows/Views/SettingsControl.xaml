@@ -33,12 +33,23 @@
             Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
             VerticalAlignment="Center"
             Text="开始前先发送的按键" />
-        <TextBox
+        <StackPanel
             Grid.Row="0"
             Grid.Column="1"
             Margin="{StaticResource SettingPanelItemTopBottomMargin}"
-            MinWidth="{StaticResource SettingPanelTextBoxMinWidth}"
-            Text="{Binding LeadingKeys.Text, UpdateSourceTrigger=PropertyChanged}" />
+            Orientation="Horizontal">
+            <TextBox
+                MinWidth="{StaticResource SettingPanelTextBoxMinWidth}"
+                VerticalAlignment="Center"
+                Text="{Binding LeadingKeys.Text, UpdateSourceTrigger=PropertyChanged}" />
+            <Button
+                Margin="6,0,0,0"
+                Padding="8,2"
+                VerticalAlignment="Center"
+                Click="OnRecordLeadingKeysClick"
+                Content="录制"
+                ToolTip="弹出键盘图，敲键盘、点键帽都能录" />
+        </StackPanel>
         <TextBlock
             Grid.Row="0"
             Grid.Column="2"
@@ -55,12 +66,23 @@
             Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
             VerticalAlignment="Center"
             Text="切换输入框的按键" />
-        <TextBox
+        <StackPanel
             Grid.Row="1"
             Grid.Column="1"
             Margin="{StaticResource SettingPanelItemTopBottomMargin}"
-            MinWidth="{StaticResource SettingPanelTextBoxMinWidth}"
-            Text="{Binding NextFieldKeys.Text, UpdateSourceTrigger=PropertyChanged}" />
+            Orientation="Horizontal">
+            <TextBox
+                MinWidth="{StaticResource SettingPanelTextBoxMinWidth}"
+                VerticalAlignment="Center"
+                Text="{Binding NextFieldKeys.Text, UpdateSourceTrigger=PropertyChanged}" />
+            <Button
+                Margin="6,0,0,0"
+                Padding="8,2"
+                VerticalAlignment="Center"
+                Click="OnRecordNextFieldKeysClick"
+                Content="录制"
+                ToolTip="弹出键盘图，敲键盘、点键帽都能录" />
+        </StackPanel>
         <TextBlock
             Grid.Row="1"
             Grid.Column="2"
@@ -77,12 +99,23 @@
             Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
             VerticalAlignment="Center"
             Text="最后一段之后的按键" />
-        <TextBox
+        <StackPanel
             Grid.Row="2"
             Grid.Column="1"
             Margin="{StaticResource SettingPanelItemTopBottomMargin}"
-            MinWidth="{StaticResource SettingPanelTextBoxMinWidth}"
-            Text="{Binding LastFieldKeys.Text, UpdateSourceTrigger=PropertyChanged}" />
+            Orientation="Horizontal">
+            <TextBox
+                MinWidth="{StaticResource SettingPanelTextBoxMinWidth}"
+                VerticalAlignment="Center"
+                Text="{Binding LastFieldKeys.Text, UpdateSourceTrigger=PropertyChanged}" />
+            <Button
+                Margin="6,0,0,0"
+                Padding="8,2"
+                VerticalAlignment="Center"
+                Click="OnRecordLastFieldKeysClick"
+                Content="录制"
+                ToolTip="弹出键盘图，敲键盘、点键帽都能录" />
+        </StackPanel>
         <TextBlock
             Grid.Row="2"
             Grid.Column="2"
@@ -168,6 +201,14 @@
                 Margin="0,4,0,0"
                 Style="{StaticResource SettingPanelTextBlockDescriptionStyle}"
                 Text="+ 、逗号和 \ 本身也是按键，写的时候前面加一个 \ 转义：Ctrl + \+ 是「按住 Ctrl 再按加号键」，存下来就是 Ctrl+\+。" />
+            <TextBlock
+                Margin="0,4,0,0"
+                Style="{StaticResource SettingPanelTextBlockDescriptionStyle}"
+                Text="Shift 加数字或符号会写成那个上档字符本身：Shift+1 就是 !，解析回来还是同一个键。" />
+            <TextBlock
+                Margin="0,4,0,0"
+                Style="{StaticResource SettingPanelTextBlockDescriptionStyle}"
+                Text="懒得记写法就点右边的「录制」，对着键盘图敲一下就行。" />
             <TextBlock
                 Margin="0,4,0,0"
                 Style="{StaticResource SettingPanelTextBlockDescriptionStyle}"

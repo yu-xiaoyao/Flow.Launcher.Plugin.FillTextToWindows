@@ -168,13 +168,25 @@
                             Margin="0,0,10,4"
                             VerticalAlignment="Center"
                             Text="开始前按键" />
-                        <TextBox
+                        <StackPanel
                             Grid.Row="0"
                             Grid.Column="1"
-                            MinWidth="150"
                             Margin="0,0,0,4"
-                            Padding="4,3"
-                            Text="{Binding Draft.LeadingKeys.Text, UpdateSourceTrigger=PropertyChanged}" />
+                            Orientation="Horizontal">
+                            <TextBox
+                                MinWidth="150"
+                                Padding="4,3"
+                                VerticalAlignment="Center"
+                                Text="{Binding Draft.LeadingKeys.Text, UpdateSourceTrigger=PropertyChanged}" />
+                            <Button
+                                Width="52"
+                                Margin="6,0,0,0"
+                                Padding="0,2"
+                                VerticalAlignment="Center"
+                                Click="OnRecordLeadingKeysClick"
+                                Content="录制"
+                                ToolTip="弹出键盘图，敲键盘、点键帽都能录" />
+                        </StackPanel>
                         <TextBlock
                             Grid.Row="0"
                             Grid.Column="2"
@@ -190,13 +202,25 @@
                             Margin="0,0,10,4"
                             VerticalAlignment="Center"
                             Text="切换输入框" />
-                        <TextBox
+                        <StackPanel
                             Grid.Row="1"
                             Grid.Column="1"
-                            MinWidth="150"
                             Margin="0,0,0,4"
-                            Padding="4,3"
-                            Text="{Binding Draft.NextFieldKeys.Text, UpdateSourceTrigger=PropertyChanged}" />
+                            Orientation="Horizontal">
+                            <TextBox
+                                MinWidth="150"
+                                Padding="4,3"
+                                VerticalAlignment="Center"
+                                Text="{Binding Draft.NextFieldKeys.Text, UpdateSourceTrigger=PropertyChanged}" />
+                            <Button
+                                Width="52"
+                                Margin="6,0,0,0"
+                                Padding="0,2"
+                                VerticalAlignment="Center"
+                                Click="OnRecordNextFieldKeysClick"
+                                Content="录制"
+                                ToolTip="弹出键盘图，敲键盘、点键帽都能录" />
+                        </StackPanel>
                         <TextBlock
                             Grid.Row="1"
                             Grid.Column="2"
@@ -212,13 +236,25 @@
                             Margin="0,0,10,4"
                             VerticalAlignment="Center"
                             Text="最后一段之后" />
-                        <TextBox
+                        <StackPanel
                             Grid.Row="2"
                             Grid.Column="1"
-                            MinWidth="150"
                             Margin="0,0,0,4"
-                            Padding="4,3"
-                            Text="{Binding Draft.LastFieldKeys.Text, UpdateSourceTrigger=PropertyChanged}" />
+                            Orientation="Horizontal">
+                            <TextBox
+                                MinWidth="150"
+                                Padding="4,3"
+                                VerticalAlignment="Center"
+                                Text="{Binding Draft.LastFieldKeys.Text, UpdateSourceTrigger=PropertyChanged}" />
+                            <Button
+                                Width="52"
+                                Margin="6,0,0,0"
+                                Padding="0,2"
+                                VerticalAlignment="Center"
+                                Click="OnRecordLastFieldKeysClick"
+                                Content="录制"
+                                ToolTip="弹出键盘图，敲键盘、点键帽都能录" />
+                        </StackPanel>
                         <TextBlock
                             Grid.Row="2"
                             Grid.Column="2"

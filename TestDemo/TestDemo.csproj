@@ -15,6 +15,8 @@
 
   <PropertyGroup Condition="'$(WithClipboardTest)' == 'true'">
     <DefineConstants>$(DefineConstants);WITH_CLIPBOARD_TEST</DefineConstants>
+    <!-- 录制对话框预览模式要建 WPF 窗口 -->
+    <UseWPF>true</UseWPF>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(WithClipboardTest)' == 'true'">
@@ -23,6 +25,8 @@
 
   <ItemGroup Condition="'$(WithClipboardTest)' != 'true'">
     <Compile Remove="ClipboardSnapshotTest.cs" />
+    <Compile Remove="KeyboardLayoutTest.cs" />
+    <Compile Remove="ShortcutRecorderPreview.cs" />
   </ItemGroup>
 
 </Project>

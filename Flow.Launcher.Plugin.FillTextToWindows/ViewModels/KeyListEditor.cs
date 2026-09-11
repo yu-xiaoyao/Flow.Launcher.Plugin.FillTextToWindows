@@ -51,7 +51,26 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
         public event PropertyChangedEventHandler PropertyChanged;
 
         /// <summary>
+        /// 用一串按键整个替换输入框里的内容，和用户自己敲 <see cref="Text"/> 一样会写回配置。
+        /// 录制对话框点保存走的就是这里。
+        /// </summary>
+        public void SetKeys(IReadOnlyList<string> keys)
+        {
+            var text = KeyParser.Format(keys);
+            if (string.Equals(_text, text, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _text = text;
+            Raise(nameof(Text));
+            Raise(nameof(Preview));
+            Push();
+        }
+
+        /// <summary>
         /// 配置被换掉了（切到别的记录、或者重新载入），把原文同步过来。
+        /// <para>注意这里故意不 <see cref="Push"/>：是外面改了配置，再写回去就成了自己覆盖自己。</para>
         /// </summary>
         public void Load(IReadOnlyList<string> keys)
         {

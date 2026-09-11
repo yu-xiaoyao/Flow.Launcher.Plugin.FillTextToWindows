@@ -47,6 +47,23 @@ Flow Launcher 的结果对应了一个 List<String> 结果, 我想将这个结�
 - **按键走 `SendInput`**：`Interop/KeyboardSimulator.cs`。
 - **按键可配置**：`Keys/KeyParser.cs` 解析 `Settings.NextFieldKeys` 等配置项，
   语法是「组合之间用逗号或空格分隔，组合内部用 `+`」。设置面板会实时显示解析结果。
+- **按键可以录，不用手写**：三个按键字段（设置面板）和每条记录的自定义配置（数据管理窗口）旁边都有「录制」按钮，
+  打开 `Views/ShortcutRecorderWindow.xaml`。上半部分是 `ViewModels/ShortcutRecorderViewModel.cs` 里的记录结果
+  （`ChordItem` 一条一个组合，能删、能挪），下半部分是 `Views/KeyboardLayout.cs` 里的键盘图——
+  纯数据，位置全在 `AllCaps` 里写死（一个字母键 = 4 格），界面那边按格子铺成一个 `Grid`，测试在 `TestDemo/KeyboardLayoutTest.cs`。
+  录一条只走 `KeyChord.Create(...).Text`，所以写进配置的一定是规范写法。几个坑：
+  - 物理按键走 `Window.PreviewKeyDown`（tunneling 里最外层的，比子控件先拿到），一律 `e.Handled = true`，
+    这样 Space / Enter 不会误按对话框自己的按钮。**按钮里别写 `_` 访问键**：按住 Alt 的访问键不走按键事件，拦不住。
+  - `Esc` 固定当取消、不录进去，要录 Esc 就点键盘图上的键帽。
+  - 修饰键统一用不分左右的键码（`KeyCodes.Control`，不是 `LeftControl`）：混着写会变成 `Ctrl+LCtrl+V`，存进配置没法看。
+    按住哪些修饰键问 `GetKeyState`（`Interop/NativeMethods.cs` 里新加的），不读 `Keyboard.Modifiers`——
+    传通用键码时左右哪个按住都算数，也不会漏掉对话框打开前就按着的键。
+  - **名字表里没有的键一律不录**（`KeyCodes.IsKnown`）：`GetName` 对它们会给出 `0x0C` 这种解析不回来的写法，
+    存下去 `KeyListEditor.Push` 直接把这串按键清空。真实会踩到的是 NumLock 关着时的小键盘 5（VK_CLEAR 0x0C）。
+  - `Alt+Tab`、`Win+字母`、`Ctrl+Alt+Del` 这类被系统抢走的键录不到（键盘图也绕不过去），小键盘回车和主回车是同一个键。
+  - 对话框的 `Owner` 传按钮所在的那个窗口（`Window.GetWindow(this)`）。别传 Flow Launcher 的主窗口——
+    它会隐藏，跟着一起藏起来的模态对话框就成了看不见的窗口。
+  - 键盘图的坐标是手写的表，改完跑一下 `TestDemo/KeyboardLayoutTest.cs`（每行都必须正好铺满）。
 - **保存的记录**：`Data/FillEntryStore.cs` 用 SQLite 存，两张表——
   主表 `FillEntries` 存名称和那 8 个配置字段，从表 `FillEntryLines`（`EntryId` / `Value` / `SortOrder`）
   存每一段数据，`SortOrder` 从 1 开始就是粘贴顺序。更新记录时行数据整体删掉重插，删除记录靠
@@ -66,14 +83,18 @@ Flow Launcher 的结果对应了一个 List<String> 结果, 我想将这个结�
     Data/                       FillEntry 实体 + SQLite 存储
     Keys/                       按键名 ↔ 虚拟键码、按键序列解析
     Interop/                    Win32 剪贴板与 SendInput 封装
-    ViewModels/ Views/          设置面板 + 数据管理窗口
+    ViewModels/ Views/          设置面板 + 数据管理窗口 + 按键录制对话框（KeyboardLayout / ShortcutRecorderWindow）
     Images/FillTextToWindows.png  插件图标（tools/make-icon.ps1 生成）
 
     TestDemo/                   测试代码放这里（不参与打包）。默认不引用插件工程，也不编译测试文件；
-                                要跑剪贴板测试加 `-p:WithClipboardTest=true`，
+                                要跑测试加 `-p:WithClipboardTest=true`，
                                 这时才把插件工程引进来（插件里用 `<InternalsVisibleTo Include="TestDemo" />`
-                                把 internal 的 Interop 开放给它）：
+                                把 internal 的 Interop / Keys 开放给它）：
                                 dotnet run --project TestDemo -p:WithClipboardTest=true -- --clipboard-test
+                                dotnet run --project TestDemo -p:WithClipboardTest=true -- --keyboard-test
+                                键盘图排版看不准、或者改了对话框的 XAML，可以用预览模式真建一次窗口、
+                                自己发按键录一遍再截图（要抢几秒焦点，别在正打字的时候跑）：
+                                dotnet run --project TestDemo -p:WithClipboardTest=true -- --recorder-preview [png]
 
 
 ## 管理页面

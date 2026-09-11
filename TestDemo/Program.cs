@@ -9,10 +9,22 @@ namespace TestDemo
         static int Main(string[] args)
         {
 #if WITH_CLIPBOARD_TEST
-            // 剪贴板测试：dotnet run --project TestDemo -p:WithClipboardTest=true -- --clipboard-test
+            // 都要先把插件工程引进来：
+            //   dotnet run --project TestDemo -p:WithClipboardTest=true -- --clipboard-test
+            //   dotnet run --project TestDemo -p:WithClipboardTest=true -- --keyboard-test
             if (args.Contains("--clipboard-test"))
             {
                 return ClipboardSnapshotTest.Run();
+            }
+
+            if (args.Contains("--keyboard-test"))
+            {
+                return KeyboardLayoutTest.Run();
+            }
+
+            if (args.Contains("--recorder-preview"))
+            {
+                return ShortcutRecorderPreview.Run(args);
             }
 #endif
 

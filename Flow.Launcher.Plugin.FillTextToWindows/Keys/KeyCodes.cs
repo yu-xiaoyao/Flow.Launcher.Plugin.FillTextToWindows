@@ -152,6 +152,19 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Keys
         }
 
         /// <summary>
+        /// 判断这个键码认不认识。
+        /// <para>
+        /// <see cref="GetName"/> 对不认识的键码会返回 <c>0xNN</c> 这种写法，而那个字符串是解析不回来的
+        /// （<see cref="TryParse"/> 只查名字表），写进配置等于把这一串按键全清掉。
+        /// 录制这类「先拿到键码再写字」的用法，要先用这个问一下。
+        /// </para>
+        /// </summary>
+        public static bool IsKnown(ushort code)
+        {
+            return Codes.ContainsKey(code);
+        }
+
+        /// <summary>
         /// 按键名解析键码。<paramref name="needsShift"/> 表示这个名字本来就要按住 Shift 才打得出来
         /// （例如 <c>+</c>、<c>_</c>、<c>{</c>），调用方要自己把 Shift 补进修饰键里。
         /// </summary>

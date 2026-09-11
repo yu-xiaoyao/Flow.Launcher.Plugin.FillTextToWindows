@@ -101,6 +101,13 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Interop
         [DllImport("user32.dll")]
         public static extern uint MapVirtualKey(uint uCode, uint uMapType);
 
+        /// <summary>
+        /// 取某个键此刻按没按下。传 <see cref="Keys.KeyCodes.Control"/> 这类通用键码时，
+        /// 左右两个 Ctrl（Shift / Alt 也一样）按住哪个都算按下，省得自己归一化。
+        /// </summary>
+        [DllImport("user32.dll")]
+        public static extern short GetKeyState(int nVirtKey);
+
         [DllImport("user32.dll")]
         public static extern IntPtr GetForegroundWindow();
 
