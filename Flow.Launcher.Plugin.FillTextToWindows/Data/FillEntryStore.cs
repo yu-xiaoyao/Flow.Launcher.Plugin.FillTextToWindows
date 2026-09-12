@@ -26,6 +26,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                                          LeadingKeys       TEXT    NOT NULL DEFAULT '',
                                          NextFieldKeys     TEXT    NOT NULL DEFAULT '',
                                          LastFieldKeys     TEXT    NOT NULL DEFAULT '',
+                                         BeforeFillDelayMs INTEGER NULL,
                                          PasteDelayMs      INTEGER NULL,
                                          KeyDelayMs        INTEGER NULL,
                                          RestoreClipboard  INTEGER NULL
@@ -54,7 +55,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             ("FillEntries", new[]
             {
                 "Id", "Name", "UseCustomSettings", "UseLineSettings", "LeadingKeys", "NextFieldKeys",
-                "LastFieldKeys", "PasteDelayMs", "KeyDelayMs", "RestoreClipboard",
+                "LastFieldKeys", "BeforeFillDelayMs", "PasteDelayMs", "KeyDelayMs", "RestoreClipboard",
             }),
             ("FillEntryLines", new[]
             {
@@ -70,7 +71,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
         /// </summary>
         private const string SelectEntries =
             "SELECT e.Id, e.Name, e.UseCustomSettings, e.UseLineSettings, e.LeadingKeys, e.NextFieldKeys, " +
-            "e.LastFieldKeys, e.PasteDelayMs, e.KeyDelayMs, e.RestoreClipboard, " +
+            "e.LastFieldKeys, e.BeforeFillDelayMs, e.PasteDelayMs, e.KeyDelayMs, e.RestoreClipboard, " +
             "l.Value, l.LeadingKeys AS LineLeadingKeys, l.NextFieldKeys AS LineNextFieldKeys, " +
             "l.LastFieldKeys AS LineLastFieldKeys " +
             "FROM FillEntries e LEFT JOIN FillEntryLines l ON l.EntryId = e.Id ";
@@ -191,6 +192,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                 command.Parameters.AddWithValue("@last", ToJsonArray(entry.LastFieldKeys) ?? "[]");
 
                 // 留空的项存成 SQL 的 NULL，读出来就意味着「跟着全局设置走」
+                command.Parameters.AddWithValue("@beforeFillDelay", ToDbValue(entry.BeforeFillDelayMs));
                 command.Parameters.AddWithValue("@pasteDelay", ToDbValue(entry.PasteDelayMs));
                 command.Parameters.AddWithValue("@keyDelay", ToDbValue(entry.KeyDelayMs));
                 command.Parameters.AddWithValue("@restoreClipboard", ToDbValue(entry.RestoreClipboard));
@@ -206,6 +208,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                             LeadingKeys = @leading,
                             NextFieldKeys = @next,
                             LastFieldKeys = @last,
+                            BeforeFillDelayMs = @beforeFillDelay,
                             PasteDelayMs = @pasteDelay,
                             KeyDelayMs = @keyDelay,
                             RestoreClipboard = @restoreClipboard
@@ -222,10 +225,10 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                         """
                         INSERT INTO FillEntries
                             (Name, UseCustomSettings, UseLineSettings, LeadingKeys, NextFieldKeys, LastFieldKeys,
-                             PasteDelayMs, KeyDelayMs, RestoreClipboard)
+                             BeforeFillDelayMs, PasteDelayMs, KeyDelayMs, RestoreClipboard)
                         VALUES
                             (@name, @useCustom, @useLine, @leading, @next, @last,
-                             @pasteDelay, @keyDelay, @restoreClipboard);
+                             @beforeFillDelay, @pasteDelay, @keyDelay, @restoreClipboard);
                         SELECT last_insert_rowid();
                         """;
 
@@ -414,6 +417,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             var leadingColumn = reader.GetOrdinal("LeadingKeys");
             var nextColumn = reader.GetOrdinal("NextFieldKeys");
             var lastColumn = reader.GetOrdinal("LastFieldKeys");
+            var beforeFillDelayColumn = reader.GetOrdinal("BeforeFillDelayMs");
             var pasteDelayColumn = reader.GetOrdinal("PasteDelayMs");
             var keyDelayColumn = reader.GetOrdinal("KeyDelayMs");
             var restoreClipboardColumn = reader.GetOrdinal("RestoreClipboard");
@@ -437,6 +441,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                         LeadingKeys = ReadKeys(reader, leadingColumn),
                         NextFieldKeys = ReadKeys(reader, nextColumn),
                         LastFieldKeys = ReadKeys(reader, lastColumn),
+                        BeforeFillDelayMs = ReadNullableInt(reader, beforeFillDelayColumn),
                         PasteDelayMs = ReadNullableInt(reader, pasteDelayColumn),
                         KeyDelayMs = ReadNullableInt(reader, keyDelayColumn),
                         RestoreClipboard = ReadNullableBool(reader, restoreClipboardColumn),

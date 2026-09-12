@@ -401,6 +401,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
                         <TextBlock
@@ -408,7 +409,7 @@
                             Grid.Column="0"
                             Margin="0,0,10,4"
                             VerticalAlignment="Center"
-                            Text="粘贴后等待" />
+                            Text="开始前等待" />
                         <DockPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,4">
                             <TextBlock
                                 DockPanel.Dock="Right"
@@ -420,7 +421,7 @@
                             <TextBox
                                 MinWidth="150"
                                 Padding="4,3"
-                                Text="{Binding Draft.PasteDelayText, UpdateSourceTrigger=PropertyChanged}"
+                                Text="{Binding Draft.BeforeFillDelay.Text, UpdateSourceTrigger=PropertyChanged}"
                                 ToolTip="留空就是跟着全局设置走" />
                         </DockPanel>
                         <TextBlock
@@ -430,14 +431,14 @@
                             VerticalAlignment="Center"
                             FontSize="12"
                             Foreground="#FF6B6B6B"
-                            Text="{Binding Draft.PasteDelayHint}" />
+                            Text="{Binding Draft.BeforeFillDelay.Hint}" />
 
                         <TextBlock
                             Grid.Row="1"
                             Grid.Column="0"
                             Margin="0,0,10,4"
                             VerticalAlignment="Center"
-                            Text="按键间隔" />
+                            Text="粘贴后等待" />
                         <DockPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,4">
                             <TextBlock
                                 DockPanel.Dock="Right"
@@ -449,7 +450,7 @@
                             <TextBox
                                 MinWidth="150"
                                 Padding="4,3"
-                                Text="{Binding Draft.KeyDelayText, UpdateSourceTrigger=PropertyChanged}"
+                                Text="{Binding Draft.PasteDelay.Text, UpdateSourceTrigger=PropertyChanged}"
                                 ToolTip="留空就是跟着全局设置走" />
                         </DockPanel>
                         <TextBlock
@@ -459,10 +460,39 @@
                             VerticalAlignment="Center"
                             FontSize="12"
                             Foreground="#FF6B6B6B"
-                            Text="{Binding Draft.KeyDelayHint}" />
+                            Text="{Binding Draft.PasteDelay.Hint}" />
+
+                        <TextBlock
+                            Grid.Row="2"
+                            Grid.Column="0"
+                            Margin="0,0,10,4"
+                            VerticalAlignment="Center"
+                            Text="按键间隔" />
+                        <DockPanel Grid.Row="2" Grid.Column="1" Margin="0,0,0,4">
+                            <TextBlock
+                                DockPanel.Dock="Right"
+                                Margin="6,0,0,0"
+                                VerticalAlignment="Center"
+                                FontSize="12"
+                                Foreground="#FF6B6B6B"
+                                Text="毫秒" />
+                            <TextBox
+                                MinWidth="150"
+                                Padding="4,3"
+                                Text="{Binding Draft.KeyDelay.Text, UpdateSourceTrigger=PropertyChanged}"
+                                ToolTip="留空就是跟着全局设置走" />
+                        </DockPanel>
+                        <TextBlock
+                            Grid.Row="2"
+                            Grid.Column="2"
+                            Margin="10,0,0,4"
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            Foreground="#FF6B6B6B"
+                            Text="{Binding Draft.KeyDelay.Hint}" />
 
                         <CheckBox
-                            Grid.Row="2"
+                            Grid.Row="3"
                             Grid.Column="1"
                             Margin="0,4,0,0"
                             VerticalAlignment="Center"
@@ -471,7 +501,7 @@
                             IsThreeState="True"
                             ToolTip="半选（灰底方框）= 跟着全局设置走" />
                         <TextBlock
-                            Grid.Row="2"
+                            Grid.Row="3"
                             Grid.Column="2"
                             Margin="10,4,0,0"
                             VerticalAlignment="Center"

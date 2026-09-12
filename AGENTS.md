@@ -66,7 +66,7 @@ Flow Launcher 的结果对应了一个 List<String> 结果, 我想将这个结�
     它会隐藏，跟着一起藏起来的模态对话框就成了看不见的窗口。
   - 键盘图的坐标是手写的表，改完跑一下 `TestDemo/KeyboardLayoutTest.cs`（每行都必须正好铺满）。
 - **保存的记录**：`Data/FillEntryStore.cs` 用 SQLite 存，两张表——
-  主表 `FillEntries` 存名称、三个按键、两个开关和三个可空的延迟/剪贴板字段，从表 `FillEntryLines`
+  主表 `FillEntries` 存名称、三个按键、两个开关和四个可空的延迟/剪贴板字段，从表 `FillEntryLines`
   （`EntryId` / `Value` / `LeadingKeys` / `NextFieldKeys` / `LastFieldKeys` / `SortOrder`）
   存每一段数据外加这一段的按键，`SortOrder` 从 1 开始就是粘贴顺序。更新记录时行数据整体删掉重插，删除记录靠
   `ON DELETE CASCADE`（所以每次开连接都会 `PRAGMA foreign_keys = ON`）。
@@ -83,13 +83,22 @@ Flow Launcher 的结果对应了一个 List<String> 结果, 我想将这个结�
   `FillTextHelper.ToFillTextItem(FillEntry, Settings)` 负责把记录摊成这个结构；模式关着时行上的按键一律置空。
   界面上每行的按键整块跟着「数据行配置模式」显示 / 隐藏，其中「开始前」只画在第 1 段上——
   后面几段填了也不会执行，不如不给这个框。
-- **延迟/剪贴板是逐项的，按键是整层的**：`PasteDelayMs` / `KeyDelayMs` / `RestoreClipboard` 在库里可空，
+  `FillTextHelper.DescribeFlow(FillTextItem)` 把这份顺序渲染成一步一行的操作流程文本（预览 / 打日志用），
+  **它和 `DoStartFillTextAsync` 是照着写的，改执行顺序时两边一起改**。
+- **延迟/剪贴板是逐项的，按键是整层的**：`BeforeFillDelayMs` / `PasteDelayMs` / `KeyDelayMs` /
+  `RestoreClipboard` 在库里可空，
   NULL 表示「跟着全局设置走」（`FillEntry.ResolveSettings` 逐项回落，`ToDbValue` 负责把 null 写成 SQL NULL）。
-  所以一条记录只勾「自定义按键」、只改「按键间隔」就行，另外两项继续跟着设置面板变。
-  界面上这三项**不跟着「自定义按键」开关变灰**，数字框留空 / 写错都按 null 算，旁边灰字说明会跟到哪个全局值；
+  所以一条记录只勾「自定义按键」、只改「按键间隔」就行，另外几项继续跟着设置面板变。
+  界面上这几项**不跟着「自定义按键」开关变灰**，数字框留空 / 写错都按 null 算，旁边灰字说明会跟到哪个全局值；
   剪贴板那个勾选框是三态的（`IsThreeState`），半选 = null。
-  数字框存的是原文（`EntryDraft.PasteDelayText`）不是 `int?`：绑定可空数字的话，清空时 WPF 不会写出 null，
-  而是**保留旧值**，看着像清掉了实际还生效（单独建了个 WPF 小程序实测过）。
+  三个延迟框共用 `ViewModels/DelayEditor.cs`（和 `KeyListEditor` 一个路子：存原文、用的时候才解析）。
+  **别把数字框直接绑到 `int?` 上**：清空时 WPF 不会写出 null，而是**保留旧值**，
+  看着像清掉了实际还生效（单独建了个 WPF 小程序实测过）。
+- **开始前等待**：`BeforeFillDelayMs` 是 `DoStartFillTextAsync` 里最先等的那一段（发任何按键之前），
+  走 `BuildFillTextItem` 进 `FillTextItem`，和另外几个延迟一样，记录里留空就跟全局走。
+  曾在末尾加过一个对称的 `LastFillDelayMs`，实测没用就删了，别再往回加。
+  注意设置面板上的数字框还是直接绑 `Settings.XxxDelayMs`（全局值不能为空，没有「留空」这一说），
+  所以清空那个框同样是「保留旧值」，没跟记录那边一样做 `DelayEditor`。
 - **表结构变了就重建，不做迁移**：`EnsureCreated` 拿 `RequiredColumns` 里那份列清单查 `pragma_table_info`，
   表已经在了但缺列就 `DROP TABLE` 重建（先删从表，主表被外键引用着，顺序反了删不掉）。
   也就是说改表结构不用写迁移代码，老库直接丢掉、记录重新录一遍就行；表还没建出来的新库不算，`DbDDL` 直接建。
@@ -129,8 +138,9 @@ Flow Launcher 的结果对应了一个 List<String> 结果, 我想将这个结�
    (2). 切换输入框的按键
    (3). 最后一段之后的按键
 4. 延迟和剪贴板(每一项都可以留空, 留空就跟着全局设置走)
-   (1). 粘贴后等待(毫秒)
-   (2). 按键间隔(毫秒)
-   (3). 填充完成后把剪贴板还原成原来的文本
+   (1). 开始前等待(毫秒)
+   (2). 粘贴后等待(毫秒)
+   (3). 按键间隔(毫秒)
+   (4). 填充完成后把剪贴板还原成原来的文本
 5. 数据行配置(可选, 勾「数据行配置模式」才生效): 每一段自己的
    开始前按键 / 粘贴后按键 / 最后一段之后按键, 和上面的自定义按键叠加

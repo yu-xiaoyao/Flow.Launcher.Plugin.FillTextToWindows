@@ -24,6 +24,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!--  开始粘贴之前  -->
@@ -125,21 +126,43 @@
             Foreground="{DynamicResource Color04B}"
             Text="{Binding LastFieldKeys.Preview}" />
 
-        <!--  粘贴后等待  -->
+        <!--  开始前等待  -->
         <TextBlock
             Grid.Row="3"
             Grid.Column="0"
             Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
             VerticalAlignment="Center"
-            Text="粘贴后等待（毫秒）" />
+            Text="开始前等待（毫秒）" />
         <TextBox
             Grid.Row="3"
             Grid.Column="1"
             Margin="{StaticResource SettingPanelItemTopBottomMargin}"
             MinWidth="{StaticResource SettingPanelTextBoxMinWidth}"
-            Text="{Binding Settings.PasteDelayMs}" />
+            Text="{Binding Settings.BeforeFillDelayMs}" />
         <TextBlock
             Grid.Row="3"
+            Grid.Column="2"
+            Margin="9,4.5,0,4.5"
+            VerticalAlignment="Center"
+            FontSize="12"
+            Foreground="{DynamicResource Color04B}"
+            Text="一开始先等这么久再发按键，给目标程序一点拿到焦点的时间" />
+
+        <!--  粘贴后等待  -->
+        <TextBlock
+            Grid.Row="4"
+            Grid.Column="0"
+            Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
+            VerticalAlignment="Center"
+            Text="粘贴后等待（毫秒）" />
+        <TextBox
+            Grid.Row="4"
+            Grid.Column="1"
+            Margin="{StaticResource SettingPanelItemTopBottomMargin}"
+            MinWidth="{StaticResource SettingPanelTextBoxMinWidth}"
+            Text="{Binding Settings.PasteDelayMs}" />
+        <TextBlock
+            Grid.Row="4"
             Grid.Column="2"
             Margin="9,4.5,0,4.5"
             VerticalAlignment="Center"
@@ -149,19 +172,19 @@
 
         <!--  按键间隔  -->
         <TextBlock
-            Grid.Row="4"
+            Grid.Row="5"
             Grid.Column="0"
             Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
             VerticalAlignment="Center"
             Text="按键间隔（毫秒）" />
         <TextBox
-            Grid.Row="4"
+            Grid.Row="5"
             Grid.Column="1"
             Margin="{StaticResource SettingPanelItemTopBottomMargin}"
             MinWidth="{StaticResource SettingPanelTextBoxMinWidth}"
             Text="{Binding Settings.KeyDelayMs}" />
         <TextBlock
-            Grid.Row="4"
+            Grid.Row="5"
             Grid.Column="2"
             Margin="9,4.5,0,4.5"
             VerticalAlignment="Center"
@@ -171,7 +194,7 @@
 
         <!--  还原剪贴板  -->
         <CheckBox
-            Grid.Row="5"
+            Grid.Row="6"
             Grid.Column="0"
             Grid.ColumnSpan="3"
             Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
@@ -180,7 +203,7 @@
 
         <!--  语法说明  -->
         <StackPanel
-            Grid.Row="6"
+            Grid.Row="7"
             Grid.Column="0"
             Grid.ColumnSpan="3"
             Margin="0,12,0,0">

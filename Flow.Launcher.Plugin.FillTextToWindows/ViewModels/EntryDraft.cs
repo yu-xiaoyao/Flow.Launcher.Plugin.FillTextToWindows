@@ -31,10 +31,6 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
 
         private List<string> _lastFieldKeys = new();
 
-        private string _pasteDelayText = string.Empty;
-
-        private string _keyDelayText = string.Empty;
-
         private bool? _restoreClipboard;
 
         public EntryDraft()
@@ -42,6 +38,11 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
             LeadingKeys = new KeyListEditor(_leadingKeys, keys => _leadingKeys = keys);
             NextFieldKeys = new KeyListEditor(_nextFieldKeys, keys => _nextFieldKeys = keys);
             LastFieldKeys = new KeyListEditor(_lastFieldKeys, keys => _lastFieldKeys = keys);
+
+            // 全局值载入的时候才填进去，先摆个 0
+            BeforeFillDelay = new DelayEditor(null, 0);
+            PasteDelay = new DelayEditor(null, 0);
+            KeyDelay = new DelayEditor(null, 0);
 
             Values.CollectionChanged += OnValuesCollectionChanged;
         }
@@ -60,6 +61,15 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
 
         /// <summary>「最后一段之后」编辑框。</summary>
         public KeyListEditor LastFieldKeys { get; }
+
+        /// <summary>「开始前等待」：留空就跟着全局设置走。</summary>
+        public DelayEditor BeforeFillDelay { get; }
+
+        /// <summary>「粘贴后等待」：留空就跟着全局设置走。</summary>
+        public DelayEditor PasteDelay { get; }
+
+        /// <summary>「按键间隔」：留空就跟着全局设置走。</summary>
+        public DelayEditor KeyDelay { get; }
 
         public string Name
         {
@@ -83,38 +93,6 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
         }
 
         /// <summary>
-        /// 「粘贴后等待」输入框里的原文。留空（或者写了不是数字的东西）就是 null，跟着全局设置走。
-        /// <para>
-        /// 存原文而不是直接存 int?：输入框绑可空数字的话，清空时 WPF 不会写出 null，
-        /// 而是保留旧值，看上去像「清掉了」，实际还生效。
-        /// </para>
-        /// </summary>
-        public string PasteDelayText
-        {
-            get => _pasteDelayText;
-            set
-            {
-                if (SetField(ref _pasteDelayText, value ?? string.Empty))
-                {
-                    Raise(nameof(PasteDelayHint));
-                }
-            }
-        }
-
-        /// <summary>「按键间隔」输入框里的原文，留空就是跟着全局设置走。</summary>
-        public string KeyDelayText
-        {
-            get => _keyDelayText;
-            set
-            {
-                if (SetField(ref _keyDelayText, value ?? string.Empty))
-                {
-                    Raise(nameof(KeyDelayHint));
-                }
-            }
-        }
-
-        /// <summary>
         /// 「还原剪贴板」。三态：勾上还原、空着不还原、半选跟着全局设置走。
         /// </summary>
         public bool? RestoreClipboard
@@ -129,20 +107,9 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
             }
         }
 
-        /// <summary>这一项填了具体值就什么也不提示；留空、或者写的不是数字，才说明实际会用哪个值。</summary>
-        public string PasteDelayHint => DelayHint(_pasteDelayText, _globalSettings.PasteDelayMs);
-
-        public string KeyDelayHint => DelayHint(_keyDelayText, _globalSettings.KeyDelayMs);
-
         public string RestoreClipboardHint => RestoreClipboard.HasValue
             ? string.Empty
             : "跟全局走（当前" + (_globalSettings.RestoreClipboard ? "还原" : "不还原") + "）";
-
-        /// <summary>「粘贴后等待」解析出来的值，null 表示跟着全局走。</summary>
-        public int? PasteDelayMs => ParseDelay(_pasteDelayText);
-
-        /// <summary>「按键间隔」解析出来的值，null 表示跟着全局走。</summary>
-        public int? KeyDelayMs => ParseDelay(_keyDelayText);
 
         public string SegmentSummary
         {
@@ -174,7 +141,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
         /// <remarks>
         /// 三个按键总是有值：记录自己带就用它的，没勾「自定义按键」或者新建时先用全局按键填上，
         /// 这样用户勾上之后是从当前全局值开始改，而不是从空白开始。
-        /// 「粘贴后等待 / 按键间隔 / 还原剪贴板」没这回事：没存过就留空，表示跟着全局设置走。
+        /// 三个延迟和剪贴板开关没这回事：没存过就留空，表示跟着全局设置走。
         /// 数据行上的按键也留空，空着的那一段自动用主表的配置。
         /// </remarks>
         public void LoadFrom(FillEntry entry, Settings globalSettings)
@@ -212,14 +179,12 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
             NextFieldKeys.Load(_nextFieldKeys);
             LastFieldKeys.Load(_lastFieldKeys);
 
-            // 这三个留空就是跟着全局走，所以没存过的记录摆空框，旁边灰字显示会跟到哪个值
-            PasteDelayText = entry?.PasteDelayMs?.ToString() ?? string.Empty;
-            KeyDelayText = entry?.KeyDelayMs?.ToString() ?? string.Empty;
-            RestoreClipboard = entry?.RestoreClipboard;
+            // 这几个留空就是跟着全局走，所以没存过的记录摆空框，旁边灰字显示会跟到哪个值
+            BeforeFillDelay.Load(entry?.BeforeFillDelayMs, _globalSettings.BeforeFillDelayMs);
+            PasteDelay.Load(entry?.PasteDelayMs, _globalSettings.PasteDelayMs);
+            KeyDelay.Load(entry?.KeyDelayMs, _globalSettings.KeyDelayMs);
 
-            // 全局值换过的话提示文字也得跟着变，哪怕输入框里的原文一个字没动
-            Raise(nameof(PasteDelayHint));
-            Raise(nameof(KeyDelayHint));
+            RestoreClipboard = entry?.RestoreClipboard;
             Raise(nameof(RestoreClipboardHint));
         }
 
@@ -267,8 +232,9 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
                 NextFieldKeys = FillEntry.CopyKeys(_nextFieldKeys),
                 LastFieldKeys = FillEntry.CopyKeys(_lastFieldKeys),
                 UseLineSettings = UseLineSettings,
-                PasteDelayMs = PasteDelayMs,
-                KeyDelayMs = KeyDelayMs,
+                BeforeFillDelayMs = BeforeFillDelay.Value,
+                PasteDelayMs = PasteDelay.Value,
+                KeyDelayMs = KeyDelay.Value,
                 RestoreClipboard = RestoreClipboard,
             };
         }
@@ -311,8 +277,9 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
                     && Values.All(item => string.IsNullOrWhiteSpace(item.Text))
                     && !UseCustomSettings
                     && !UseLineSettings
-                    && PasteDelayMs == null
-                    && KeyDelayMs == null
+                    && BeforeFillDelay.Value == null
+                    && PasteDelay.Value == null
+                    && KeyDelay.Value == null
                     && RestoreClipboard == null;
             }
 
@@ -320,8 +287,9 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
                 || !LinesEqual(ParseLines(), entry.Values)
                 || UseCustomSettings != entry.UseCustomSettings
                 || UseLineSettings != entry.UseLineSettings
-                || PasteDelayMs != entry.PasteDelayMs
-                || KeyDelayMs != entry.KeyDelayMs
+                || BeforeFillDelay.Value != entry.BeforeFillDelayMs
+                || PasteDelay.Value != entry.PasteDelayMs
+                || KeyDelay.Value != entry.KeyDelayMs
                 || RestoreClipboard != entry.RestoreClipboard)
             {
                 return false;
@@ -332,35 +300,6 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
                    || (KeysEqual(_leadingKeys, entry.LeadingKeys)
                        && KeysEqual(_nextFieldKeys, entry.NextFieldKeys)
                        && KeysEqual(_lastFieldKeys, entry.LastFieldKeys));
-        }
-
-        /// <summary>
-        /// 解析延迟输入框：空着、或者写的不是数字，都当成「跟着全局设置走」。
-        /// </summary>
-        private static int? ParseDelay(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-            {
-                return null;
-            }
-
-            return int.TryParse(text.Trim(), out var value) ? value : null;
-        }
-
-        /// <summary>
-        /// 延迟输入框下面的灰字。填了具体值就不提示；留空说明会跟到哪个值，
-        /// 写的不是数字则提醒一句 —— 那种情况也按留空算，不说的话用户会以为自己的值生效了。
-        /// </summary>
-        private static string DelayHint(string text, int globalValue)
-        {
-            if (int.TryParse((text ?? string.Empty).Trim(), out _))
-            {
-                return string.Empty;
-            }
-
-            var follow = $"跟全局走（当前 {globalValue}）";
-
-            return string.IsNullOrWhiteSpace(text) ? follow : "⚠ 只能填数字，" + follow;
         }
 
         /// <summary>

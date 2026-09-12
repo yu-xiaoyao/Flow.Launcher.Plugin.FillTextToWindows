@@ -18,6 +18,8 @@ namespace Flow.Launcher.Plugin.FillTextToWindows
 
         private List<string> _lastFieldKeys = new();
 
+        private int _beforeFillDelayMs;
+
         private int _pasteDelayMs = 40;
 
         private int _keyDelayMs = 40;
@@ -53,6 +55,16 @@ namespace Flow.Launcher.Plugin.FillTextToWindows
         {
             get => _lastFieldKeys;
             set => SetField(ref _lastFieldKeys, CopyKeys(value));
+        }
+
+        /// <summary>
+        /// 一上来先等这么久，然后才开始发按键。Flow Launcher 隐藏窗口、焦点切回目标程序需要一点时间，
+        /// 目标程序反应慢的时候可以调大。
+        /// </summary>
+        public int BeforeFillDelayMs
+        {
+            get => _beforeFillDelayMs;
+            set => SetField(ref _beforeFillDelayMs, Clamp(value, 0, 10000));
         }
 
         /// <summary>
@@ -96,6 +108,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows
                 LeadingKeys = LeadingKeys,
                 NextFieldKeys = NextFieldKeys,
                 LastFieldKeys = LastFieldKeys,
+                BeforeFillDelayMs = BeforeFillDelayMs,
                 PasteDelayMs = PasteDelayMs,
                 KeyDelayMs = KeyDelayMs,
                 RestoreClipboard = RestoreClipboard,

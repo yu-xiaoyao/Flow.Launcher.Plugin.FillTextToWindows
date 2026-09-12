@@ -8,7 +8,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Fill;
 public class FillTextItem
 {
     /// <summary>
-    /// 粘贴前延迟
+    /// 一上来先等这么久，然后才开始发按键
     /// </summary>
     public int BeforeFillDelayMs { get; set; }
 
@@ -48,10 +48,5 @@ public class FillTextItem
     /// 粘贴数据行
     /// </summary>
     public IReadOnlyList<FillTextLineItem> Values { get; set; }
-    
-    /// <summary>
-    /// 粘贴后延迟
-    /// </summary>
-    public int LastFillDelayMs { get; set; }
-    
+
 }

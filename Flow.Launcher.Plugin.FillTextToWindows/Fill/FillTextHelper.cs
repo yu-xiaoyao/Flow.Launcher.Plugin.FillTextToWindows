@@ -80,6 +80,9 @@ public class FillTextHelper
     public static async Task DoStartFillTextAsync(FillTextTaskMetadata metadata)
     {
         var item = metadata.Item;
+
+        InnerLogger.Logger.Debug($"{DescribeFlow(item)}");
+
         var keyDelayMs = item.KeyDelayMs;
         var pasteDelayMs = item.PasteDelayMs;
         var values = item.Values;
@@ -99,6 +102,7 @@ public class FillTextHelper
         if (!success)
         {
             InnerLogger.Logger.Trace("发送开始之前的按键. 失败");
+            return;
         }
 
         // 开始按行复制粘贴数据。
@@ -141,10 +145,7 @@ public class FillTextHelper
         }
         // end loop
 
-        success = await SendKeys(metadata, item.LastFieldKeys, keyDelayMs);
-        if (!success) return;
-
-        await WaitMills(metadata, item.LastFillDelayMs);
+        await SendKeys(metadata, item.LastFieldKeys, keyDelayMs);
     }
 
     private static async Task<bool> FillText(FillTextTaskMetadata metadata, string textData, int keyDelayMs,
@@ -263,7 +264,7 @@ public class FillTextHelper
     {
         return new FillTextItem
         {
-            BeforeFillDelayMs = 0,
+            BeforeFillDelayMs = settings.BeforeFillDelayMs,
             KeyDelayMs = settings.KeyDelayMs,
             PasteDelayMs = settings.PasteDelayMs,
             RestoreClipboard = settings.RestoreClipboard,
@@ -272,5 +273,135 @@ public class FillTextHelper
             LastFieldKeys = settings.LastFieldKeys,
             Values = values,
         };
+    }
+
+    /// <summary>
+    /// 把一个填充任务描述成「操作流程」文本：一步一行，顺序和
+    /// <see cref="DoStartFillTextAsync"/> 一模一样，没有按键或内容的那几步自动省掉。
+    /// <para>
+    /// 用来预览这条记录到底会干什么，出问题时也可以直接打进日志。例子：
+    /// </para>
+    /// <code>
+    /// 延迟：每段粘贴 40 毫秒，每次按键 40 毫秒
+    /// 1. 等待 300 毫秒
+    /// 2. 按 Ctrl+Home
+    /// 3. 粘贴「张三」
+    /// 4. 按 Tab
+    /// 5. 粘贴「13800138000」
+    /// 6. 按 Down
+    /// 7. 按 Down
+    /// 8. 粘贴「北京」
+    /// 9. 按 Ctrl+S
+    /// 10. 按 Enter
+    /// </code>
+    /// </summary>
+    public static string DescribeFlow(FillTextItem item)
+    {
+        if (item == null)
+        {
+            return string.Empty;
+        }
+
+        var steps = new List<string>();
+
+        if (item.BeforeFillDelayMs > 0)
+        {
+            steps.Add($"等待 {item.BeforeFillDelayMs} 毫秒");
+        }
+
+        AddSendSteps(steps, item.LeadingKeys);
+
+        var values = item.Values ?? new List<FillTextLineItem>();
+
+        for (var i = 0; i < values.Count; i++)
+        {
+            var lineItem = values[i];
+
+            // 开始前按键只认第一段的，这里和执行那边保持一致
+            if (i == 0)
+            {
+                AddSendSteps(steps, lineItem.ItemLeadingKeys);
+            }
+
+            steps.Add($"粘贴「{Shorten(lineItem.TextData)}」");
+
+            if (i == values.Count - 1)
+            {
+                AddSendSteps(steps, lineItem.ItemLastFieldKeys);
+            }
+            else
+            {
+                var nextFieldKeys = lineItem.NextFieldKeys;
+                if (nextFieldKeys == null || nextFieldKeys.Count == 0)
+                {
+                    nextFieldKeys = item.NextFieldKeys;
+                }
+
+                AddSendSteps(steps, nextFieldKeys);
+            }
+        }
+
+        AddSendSteps(steps, item.LastFieldKeys);
+
+        var flow = string.Join(
+            Environment.NewLine,
+            steps.Select((step, index) => $"{index + 1}. {step}"));
+
+        var delays = DescribeDelays(item);
+
+        return delays.Length == 0 ? flow : delays + Environment.NewLine + flow;
+    }
+
+    /// <summary>
+    /// 按键一个组合一步，和 <see cref="SendKeys"/> 里挨个发出去是对应的。
+    /// 写法有问题的会显示成 <c>⚠ ...</c>，正好在流程里就能看出是哪一步。
+    /// </summary>
+    private static void AddSendSteps(List<string> steps, IReadOnlyList<string> keys)
+    {
+        if (keys == null)
+        {
+            return;
+        }
+
+        foreach (var key in keys)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                continue;
+            }
+
+            steps.Add("按 " + KeyParser.Describe(new[] { key }));
+        }
+    }
+
+    /// <summary>
+    /// 两个反复出现的延迟放在开头说一次，不然每一步后面都缀一句没法看。
+    /// 开始前等待本身就是一个步骤，所以不在这里。
+    /// </summary>
+    private static string DescribeDelays(FillTextItem item)
+    {
+        var parts = new List<string>();
+
+        if (item.PasteDelayMs > 0)
+        {
+            parts.Add($"每段粘贴 {item.PasteDelayMs} 毫秒");
+        }
+
+        if (item.KeyDelayMs > 0)
+        {
+            parts.Add($"每次按键 {item.KeyDelayMs} 毫秒");
+        }
+
+        return parts.Count == 0 ? string.Empty : "延迟：" + string.Join("，", parts);
+    }
+
+    /// <summary>内容太长就截一下，流程文本一行别被撑爆；换行也压成空格。</summary>
+    private static string Shorten(string text)
+    {
+        const int maxLength = 30;
+
+        var value = (text ?? string.Empty).Replace("\r", " ").Replace("\n", " ");
+
+        return value.Length <= maxLength ? value : value.Substring(0, maxLength) + "…";
     }
 }

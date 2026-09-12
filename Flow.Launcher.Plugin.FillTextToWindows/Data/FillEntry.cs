@@ -10,7 +10,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
     /// 数据行配置（<see cref="FillEntryLine"/> 上的按键，<see cref="UseLineSettings"/> 总开关）。
     /// </para>
     /// <para>
-    /// 三个延迟/剪贴板字段是可空的，null 表示「跟着全局设置走」——
+    /// 三个延迟和剪贴板开关都是可空的，null 表示「跟着全局设置走」——
     /// 一条记录只覆盖它真正关心的那几项，其余随时跟着设置面板变。
     /// </para>
     /// </summary>
@@ -52,6 +52,9 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
         /// </summary>
         public bool UseLineSettings { get; set; } = false;
 
+        /// <summary>一上来先等多久才开始发按键；null 表示跟着全局设置走。</summary>
+        public int? BeforeFillDelayMs { get; set; } = null;
+
         /// <summary>每次 Ctrl+V 之后等待的毫秒数；null 表示跟着全局设置走。</summary>
         public int? PasteDelayMs { get; set; } = null;
 
@@ -63,7 +66,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
 
         /// <summary>
         /// 算出这次填充实际要用的配置：按键按总开关决定用哪一层，
-        /// 三个延迟/剪贴板字段留空的就跟着全局设置走。返回的是副本，后台填充期间不会被界面改掉。
+        /// 三个延迟和剪贴板留空的就跟着全局设置走。返回的是副本，后台填充期间不会被界面改掉。
         /// </summary>
         public Settings ResolveSettings(Settings globalSettings)
         {
@@ -77,6 +80,11 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             }
 
             // 留空的字段跟着全局走，所以这里得逐项判，不能像按键那样整层切换
+            if (BeforeFillDelayMs.HasValue)
+            {
+                settings.BeforeFillDelayMs = BeforeFillDelayMs.Value;
+            }
+
             if (PasteDelayMs.HasValue)
             {
                 settings.PasteDelayMs = PasteDelayMs.Value;
@@ -110,6 +118,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                 NextFieldKeys = CopyKeys(NextFieldKeys),
                 LastFieldKeys = CopyKeys(LastFieldKeys),
                 UseLineSettings = UseLineSettings,
+                BeforeFillDelayMs = BeforeFillDelayMs,
                 PasteDelayMs = PasteDelayMs,
                 KeyDelayMs = KeyDelayMs,
                 RestoreClipboard = RestoreClipboard,
