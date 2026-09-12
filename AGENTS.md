@@ -81,8 +81,11 @@ Flow Launcher 的结果对应了一个 List<String> 结果, 我想将这个结�
   → 循环｛粘贴 + 该段粘贴后按键（非空顶掉主表，空则回落主表）｝
   → 最后一段的最后之后按键 → 主表的最后一段之后按键。
   `FillTextHelper.ToFillTextItem(FillEntry, Settings)` 负责把记录摊成这个结构；模式关着时行上的按键一律置空。
-  界面上每行的按键整块跟着「数据行配置模式」显示 / 隐藏，其中「开始前」只画在第 1 段上——
-  后面几段填了也不会执行，不如不给这个框。
+  界面上每行的按键整块跟着「数据行配置模式」显示 / 隐藏，而且**只显示这一段真正会用到的按键**：
+  第 1 段显示「开始前 + 粘贴后」、最后一段显示「最后之后」、中间几段只显示「粘贴后」
+  （只有一段时是「开始前 + 最后之后」）。这个规则由 `ValueItem.IsFirst` / `IsLast` 驱动，
+  两个标记在 `EntryDraft.Renumber()` 里跟着增删一起重算；「不是最后一段才显示」那处用
+  `Views/InverseBooleanToVisibilityConverter.cs`（WPF 自带的只有正向那个）。
   `FillTextHelper.DescribeFlow(FillTextItem)` 把这份顺序渲染成一步一行的操作流程文本（预览 / 打日志用），
   **它和 `DoStartFillTextAsync` 是照着写的，改执行顺序时两边一起改**。
 - **延迟/剪贴板是逐项的，按键是整层的**：`BeforeFillDelayMs` / `PasteDelayMs` / `KeyDelayMs` /

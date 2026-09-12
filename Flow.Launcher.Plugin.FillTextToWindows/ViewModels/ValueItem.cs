@@ -17,6 +17,10 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
 
         private int _order;
 
+        private bool _isFirst;
+
+        private bool _isLast;
+
         private List<string> _leadingKeys = new();
 
         private List<string> _nextFieldKeys = new();
@@ -62,15 +66,26 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
 
                 _order = value;
                 Raise();
-                Raise(nameof(IsFirst));
             }
         }
 
         /// <summary>
-        /// 是不是第一段。界面靠它决定要不要显示「开始前按键」——开始前按键整批只在
-        /// 第一个粘贴之前发一次，后面几段填了也不会执行。
+        /// 是不是第一段。位置由 <see cref="EntryDraft"/> 统一维护，增删数据行之后会重算。
         /// </summary>
-        public bool IsFirst => _order == 1;
+        public bool IsFirst
+        {
+            get => _isFirst;
+            set => SetField(ref _isFirst, value);
+        }
+
+        /// <summary>
+        /// 是不是最后一段。
+        /// </summary>
+        public bool IsLast
+        {
+            get => _isLast;
+            set => SetField(ref _isLast, value);
+        }
 
         /// <summary>这一段的「开始前按键」，接在主表的后面。</summary>
         public KeyListEditor LeadingKeys { get; }
@@ -117,6 +132,17 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
         private static List<string> CopyKeys(List<string> keys)
         {
             return keys == null || keys.Count == 0 ? new List<string>() : new List<string>(keys);
+        }
+
+        private void SetField(ref bool field, bool value, [CallerMemberName] string propertyName = null)
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+            Raise(propertyName);
         }
 
         private void Raise([CallerMemberName] string propertyName = null)

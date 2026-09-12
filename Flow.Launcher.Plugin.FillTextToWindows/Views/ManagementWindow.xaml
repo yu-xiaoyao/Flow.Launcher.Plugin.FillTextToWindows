@@ -5,6 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:vm="clr-namespace:Flow.Launcher.Plugin.FillTextToWindows.ViewModels"
+    xmlns:views="clr-namespace:Flow.Launcher.Plugin.FillTextToWindows.Views"
     Title="FillTextToWindows 数据管理"
     Width="1000"
     Height="620"
@@ -19,6 +20,7 @@
     <Window.Resources>
         <!-- 「数据行配置模式」的总开关：关着的时候每行的按键设置整块不显示 -->
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <views:InverseBooleanToVisibilityConverter x:Key="NotBoolToVisibility" />
     </Window.Resources>
 
     <Grid Margin="14">
@@ -105,14 +107,14 @@
                                 Margin="0,0,0,6"
                                 Content="数据行配置模式（每一段配自己的按键，和下面的主表配置叠加）"
                                 IsChecked="{Binding Draft.UseLineSettings}"
-                                ToolTip="开始前按键只在第 1 段粘贴之前发一次；粘贴后按键填了会顶掉主表的「切换输入框」；最后一段之后按键排在主表的前面。" />
+                                ToolTip="开始前按键只在第 1 段粘贴之前发一次；粘贴后按键填了会顶掉主表的「切换输入框」；最后一段之后按键排在主表的前面。每一段只显示它自己会用到的按键。" />
                             <TextBlock
                                 Margin="0,0,0,8"
                                 FontSize="12"
                                 Foreground="#FF6B6B6B"
                                 TextWrapping="Wrap"
                                 Visibility="{Binding Draft.UseLineSettings, Converter={StaticResource BoolToVisibility}}"
-                                Text="开始前按键只在第 1 段粘贴之前发一次；粘贴后按键填了会顶掉主表的「切换输入框」；最后一段之后按键排在主表的前面。" />
+                                Text="每一段只显示它自己会用到的按键：开始前（只在第 1 段粘贴之前发一次）/ 粘贴后（填了会顶掉主表的「切换输入框」）/ 最后之后（排在主表的前面，只有最后一段用得上）。" />
 
                             <ItemsControl x:Name="ValueList" ItemsSource="{Binding Draft.Values}">
                                 <ItemsControl.ItemTemplate>
@@ -146,8 +148,11 @@
                                             </Grid>
 
                                             <!--
-                                                这一段的按键。整块跟着「数据行配置模式」显示 / 隐藏，
-                                                免得没开这个模式时数据行看着一大坨。
+                                                这一段的按键，只显示执行时真正会用到的那些：
+                                                开始前按键整批只在第 1 段之前发一次，粘贴后按键最后一段用不到
+                                                （最后一段发的是「最后之后按键」），于是第 1 段显示前两个、
+                                                中间几段只显示粘贴后、最后一段只显示最后之后。
+                                                整块跟着「数据行配置模式」显示 / 隐藏，免得没开时数据行看着一大坨。
                                             -->
                                             <WrapPanel
                                                 Margin="24,4,0,0"
@@ -187,7 +192,8 @@
 
                                                 <StackPanel
                                                     Margin="0,0,14,4"
-                                                    Orientation="Horizontal">
+                                                    Orientation="Horizontal"
+                                                    Visibility="{Binding IsLast, Converter={StaticResource NotBoolToVisibility}}">
                                                     <TextBlock
                                                         Margin="0,0,4,0"
                                                         VerticalAlignment="Center"
@@ -218,7 +224,8 @@
 
                                                 <StackPanel
                                                     Margin="0,0,0,4"
-                                                    Orientation="Horizontal">
+                                                    Orientation="Horizontal"
+                                                    Visibility="{Binding IsLast, Converter={StaticResource BoolToVisibility}}">
                                                     <TextBlock
                                                         Margin="0,0,4,0"
                                                         VerticalAlignment="Center"

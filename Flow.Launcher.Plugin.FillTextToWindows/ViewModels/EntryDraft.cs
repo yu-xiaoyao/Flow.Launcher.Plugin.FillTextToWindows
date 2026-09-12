@@ -367,13 +367,16 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
         }
 
         /// <summary>
-        /// 序号跟着位置走，删掉中间一个后面的自动补上。
+        /// 序号跟着位置走，删掉中间一个后面的自动补上；第一段 / 最后一段也跟着重算，
+        /// 数据行上该显示哪几个按键（开始前 / 粘贴后 / 最后之后）就是按这个来的。
         /// </summary>
         private void Renumber()
         {
             for (var i = 0; i < Values.Count; i++)
             {
                 Values[i].Order = i + 1;
+                Values[i].IsFirst = i == 0;
+                Values[i].IsLast = i == Values.Count - 1;
             }
         }
 
