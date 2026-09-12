@@ -73,6 +73,35 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Views
             ShortcutRecorderWindow.Record(Window.GetWindow(this), _viewModel.Draft.LastFieldKeys, "最后一段之后");
         }
 
+        // 数据行上的三个「录制」按钮。整块只有在「数据行配置模式」开着时才显示，
+        // 所以不用像上面主表那三个一样担心打开时点不到。
+
+        private void OnRecordValueLeadingKeysClick(object sender, RoutedEventArgs e)
+        {
+            RecordLineKeys(sender, "开始前按键", static item => item.LeadingKeys);
+        }
+
+        private void OnRecordValueNextFieldKeysClick(object sender, RoutedEventArgs e)
+        {
+            RecordLineKeys(sender, "粘贴后按键", static item => item.NextFieldKeys);
+        }
+
+        private void OnRecordValueLastFieldKeysClick(object sender, RoutedEventArgs e)
+        {
+            RecordLineKeys(sender, "最后一段之后按键", static item => item.LastFieldKeys);
+        }
+
+        /// <summary>
+        /// 数据行上的「录制」：从那一行的 DataContext 里挑出要写的编辑框，录完写回去。
+        /// </summary>
+        private void RecordLineKeys(object sender, string label, Func<ValueItem, KeyListEditor> pick)
+        {
+            if (sender is FrameworkElement { DataContext: ValueItem item })
+            {
+                ShortcutRecorderWindow.Record(Window.GetWindow(this), pick(item), $"第 {item.Order} 段 {label}");
+            }
+        }
+
         /// <summary>
         /// 新加的输入框自动获得焦点，这样「点一下 → 敲 → 再点一下」就能连续录入。
         /// </summary>

@@ -22,6 +22,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                                          Id                INTEGER PRIMARY KEY AUTOINCREMENT,
                                          Name              TEXT    NOT NULL,
                                          UseCustomSettings INTEGER NOT NULL DEFAULT 0,
+                                         UseLineSettings   INTEGER NOT NULL DEFAULT 0,
                                          LeadingKeys       TEXT    NOT NULL DEFAULT '',
                                          NextFieldKeys     TEXT    NOT NULL DEFAULT '["Tab"]',
                                          LastFieldKeys     TEXT    NOT NULL DEFAULT '',
@@ -31,10 +32,13 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                                      );
 
                                      CREATE TABLE IF NOT EXISTS FillEntryLines (
-                                         Id        INTEGER PRIMARY KEY AUTOINCREMENT,
-                                         EntryId   INTEGER NOT NULL REFERENCES FillEntries (Id) ON DELETE CASCADE,
-                                         Value     TEXT    NOT NULL,
-                                         SortOrder INTEGER NOT NULL
+                                         Id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                                         EntryId       INTEGER NOT NULL REFERENCES FillEntries (Id) ON DELETE CASCADE,
+                                         Value         TEXT    NOT NULL,
+                                         LeadingKeys   TEXT    NOT NULL DEFAULT '',
+                                         NextFieldKeys TEXT    NOT NULL DEFAULT '',
+                                         LastFieldKeys TEXT    NOT NULL DEFAULT '',
+                                         SortOrder     INTEGER NOT NULL
                                      );
 
                                      CREATE INDEX IF NOT EXISTS IX_FillEntryLines_EntryId
@@ -42,11 +46,27 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                                      """;
 
         /// <summary>
+        /// 后加的数据行列，老库的 <c>FillEntryLines</c> 里没有，启动时靠 <see cref="EnsureColumn"/> 补上。
+        /// </summary>
+        private static readonly (string Table, string Column, string Definition)[] AddedColumns =
+        {
+            ("FillEntries", "UseLineSettings", "INTEGER NOT NULL DEFAULT 0"),
+            ("FillEntryLines", "LeadingKeys", "TEXT NOT NULL DEFAULT ''"),
+            ("FillEntryLines", "NextFieldKeys", "TEXT NOT NULL DEFAULT ''"),
+            ("FillEntryLines", "LastFieldKeys", "TEXT NOT NULL DEFAULT ''"),
+        };
+
+        /// <summary>
         /// 查记录时连行数据一起带出来，行按 <c>SortOrder</c> 排好序。
+        /// <para>
+        /// 行上的三个按键列必须起别名：和主表的同名列重名的话，<c>GetOrdinal</c> 读到的是主表那一列。
+        /// </para>
         /// </summary>
         private const string SelectEntries =
-            "SELECT e.Id, e.Name, e.UseCustomSettings, e.LeadingKeys, e.NextFieldKeys, e.LastFieldKeys, " +
-            "e.PasteDelayMs, e.KeyDelayMs, e.RestoreClipboard, l.Value " +
+            "SELECT e.Id, e.Name, e.UseCustomSettings, e.UseLineSettings, e.LeadingKeys, e.NextFieldKeys, " +
+            "e.LastFieldKeys, e.PasteDelayMs, e.KeyDelayMs, e.RestoreClipboard, " +
+            "l.Value, l.LeadingKeys AS LineLeadingKeys, l.NextFieldKeys AS LineNextFieldKeys, " +
+            "l.LastFieldKeys AS LineLastFieldKeys " +
             "FROM FillEntries e LEFT JOIN FillEntryLines l ON l.EntryId = e.Id ";
 
         /// <summary>
@@ -100,6 +120,13 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             }
 
             Execute(connection, DbDDL);
+
+            // 老库升级。CREATE TABLE IF NOT EXISTS 对已经存在的表什么都不做，
+            // 新加的列得自己补上，不然读的时候 GetOrdinal 会直接抛。
+            foreach (var (table, column, definition) in AddedColumns)
+            {
+                EnsureColumn(connection, table, column, definition);
+            }
         }
 
         /// <summary>
@@ -161,6 +188,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                 command.Transaction = transaction;
                 command.Parameters.AddWithValue("@name", entry.Name ?? string.Empty);
                 command.Parameters.AddWithValue("@useCustom", entry.UseCustomSettings ? 1 : 0);
+                command.Parameters.AddWithValue("@useLine", entry.UseLineSettings ? 1 : 0);
                 command.Parameters.AddWithValue("@leading", ToJsonArray(custom.LeadingKeys));
                 command.Parameters.AddWithValue("@next", ToJsonArray(custom.NextFieldKeys));
                 command.Parameters.AddWithValue("@last", ToJsonArray(custom.LastFieldKeys));
@@ -175,6 +203,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                         UPDATE FillEntries SET
                             Name = @name,
                             UseCustomSettings = @useCustom,
+                            UseLineSettings = @useLine,
                             LeadingKeys = @leading,
                             NextFieldKeys = @next,
                             LastFieldKeys = @last,
@@ -193,10 +222,10 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                     command.CommandText =
                         """
                         INSERT INTO FillEntries
-                            (Name, UseCustomSettings, LeadingKeys, NextFieldKeys, LastFieldKeys,
+                            (Name, UseCustomSettings, UseLineSettings, LeadingKeys, NextFieldKeys, LastFieldKeys,
                              PasteDelayMs, KeyDelayMs, RestoreClipboard)
                         VALUES
-                            (@name, @useCustom, @leading, @next, @last,
+                            (@name, @useCustom, @useLine, @leading, @next, @last,
                              @pasteDelay, @keyDelay, @restoreClipboard);
                         SELECT last_insert_rowid();
                         """;
@@ -268,9 +297,9 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             SqliteConnection connection,
             SqliteTransaction transaction,
             long entryId,
-            IReadOnlyList<string> values)
+            IReadOnlyList<FillEntryLine> lines)
         {
-            if (values == null || values.Count == 0)
+            if (lines == null || lines.Count == 0)
             {
                 return;
             }
@@ -278,17 +307,28 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             using var command = connection.CreateCommand();
             command.Transaction = transaction;
             command.CommandText =
-                "INSERT INTO FillEntryLines (EntryId, Value, SortOrder) VALUES (@entryId, @value, @sortOrder);";
+                """
+                INSERT INTO FillEntryLines (EntryId, Value, LeadingKeys, NextFieldKeys, LastFieldKeys, SortOrder)
+                VALUES (@entryId, @value, @leading, @next, @last, @sortOrder);
+                """;
 
             var entryIdParameter = command.Parameters.Add("@entryId", SqliteType.Integer);
             var valueParameter = command.Parameters.Add("@value", SqliteType.Text);
+            var leadingParameter = command.Parameters.Add("@leading", SqliteType.Text);
+            var nextParameter = command.Parameters.Add("@next", SqliteType.Text);
+            var lastParameter = command.Parameters.Add("@last", SqliteType.Text);
             var sortOrderParameter = command.Parameters.Add("@sortOrder", SqliteType.Integer);
 
             entryIdParameter.Value = entryId;
 
-            for (var i = 0; i < values.Count; i++)
+            for (var i = 0; i < lines.Count; i++)
             {
-                valueParameter.Value = values[i] ?? string.Empty;
+                var line = lines[i] ?? new FillEntryLine();
+
+                valueParameter.Value = line.Value ?? string.Empty;
+                leadingParameter.Value = ToJsonArray(line.LeadingKeys) ?? "[]";
+                nextParameter.Value = ToJsonArray(line.NextFieldKeys) ?? "[]";
+                lastParameter.Value = ToJsonArray(line.LastFieldKeys) ?? "[]";
                 sortOrderParameter.Value = i + 1; // 排序号从 1 开始
                 command.ExecuteNonQuery();
             }
@@ -358,6 +398,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             var idColumn = reader.GetOrdinal("Id");
             var nameColumn = reader.GetOrdinal("Name");
             var useCustomColumn = reader.GetOrdinal("UseCustomSettings");
+            var useLineColumn = reader.GetOrdinal("UseLineSettings");
             var leadingColumn = reader.GetOrdinal("LeadingKeys");
             var nextColumn = reader.GetOrdinal("NextFieldKeys");
             var lastColumn = reader.GetOrdinal("LastFieldKeys");
@@ -365,6 +406,9 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             var keyDelayColumn = reader.GetOrdinal("KeyDelayMs");
             var restoreClipboardColumn = reader.GetOrdinal("RestoreClipboard");
             var valueColumn = reader.GetOrdinal("Value");
+            var lineLeadingColumn = reader.GetOrdinal("LineLeadingKeys");
+            var lineNextColumn = reader.GetOrdinal("LineNextFieldKeys");
+            var lineLastColumn = reader.GetOrdinal("LineLastFieldKeys");
 
             while (reader.Read())
             {
@@ -377,6 +421,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                         Id = id,
                         Name = reader.GetString(nameColumn),
                         UseCustomSettings = reader.GetInt64(useCustomColumn) != 0,
+                        UseLineSettings = reader.GetInt64(useLineColumn) != 0,
                         CustomSettings = new Settings
                         {
                             LeadingKeys = ReadKeys(reader, leadingColumn),
@@ -394,7 +439,13 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                 // LEFT JOIN：没有行数据的记录这里会是 NULL
                 if (!reader.IsDBNull(valueColumn))
                 {
-                    current.Values.Add(reader.GetString(valueColumn));
+                    current.Values.Add(new FillEntryLine
+                    {
+                        Value = reader.GetString(valueColumn),
+                        LeadingKeys = ReadKeys(reader, lineLeadingColumn),
+                        NextFieldKeys = ReadKeys(reader, lineNextColumn),
+                        LastFieldKeys = ReadKeys(reader, lineLastColumn),
+                    });
                 }
             }
 
@@ -404,6 +455,27 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
         private static List<string> ReadKeys(SqliteDataReader reader, int column)
         {
             return reader.IsDBNull(column) ? new List<string>() : ParseJsonArray(reader.GetString(column));
+        }
+
+        /// <summary>
+        /// 表里没有这一列就加上。加列的时候 SQLite 要求 <c>NOT NULL</c> 必须带默认值，
+        /// <see cref="AddedColumns"/> 里那几条定义都给了，所以直接 ALTER 就行。
+        /// </summary>
+        private static void EnsureColumn(SqliteConnection connection, string table, string column, string definition)
+        {
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText =
+                    $"SELECT COUNT(*) FROM pragma_table_info('{table}') WHERE name = @column;";
+                command.Parameters.AddWithValue("@column", column);
+
+                if (Convert.ToInt64(command.ExecuteScalar()) > 0)
+                {
+                    return;
+                }
+            }
+
+            Execute(connection, $"ALTER TABLE {table} ADD COLUMN {column} {definition};");
         }
 
         /// <summary>

@@ -101,6 +101,12 @@ namespace Flow.Launcher.Plugin.FillTextToWindows
             FillTextHelper.SetFillItem(FillTextHelper.ToFillTextItem(values, settings));
         }
 
+        private static void _setStartFillItem(FillEntry entry, Settings settings)
+        {
+            FillTextHelper.ResetFill();
+            FillTextHelper.SetFillItem(FillTextHelper.ToFillTextItem(entry, settings));
+        }
+
 
         public List<Result> Query(Query query)
         {
@@ -221,10 +227,11 @@ namespace Flow.Launcher.Plugin.FillTextToWindows
 
         private Result BuildEntryResult(FillEntry entry, string search)
         {
-            var subtitle = Preview(entry.Values)
+            var subtitle = Preview(entry.Values.Select(line => line.Value))
                            + "   ·   "
                            + DescribeFlow(entry.ResolveSettings(_settings))
-                           + (entry.UseCustomSettings ? "   ·   自定义配置" : string.Empty);
+                           + (entry.UseCustomSettings ? "   ·   自定义配置" : string.Empty)
+                           + (entry.UseLineSettings ? "   ·   每段独立按键" : string.Empty);
 
             return new Result
             {
@@ -235,7 +242,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows
                 Action = _ =>
                 {
                     // StartFill(entry.Values, entry.ResolveSettings(_settings));
-                    _setStartFillItem(entry.Values, entry.ResolveSettings(_settings));
+                    _setStartFillItem(entry, entry.ResolveSettings(_settings));
                     return true;
                 },
             };
@@ -367,14 +374,14 @@ namespace Flow.Launcher.Plugin.FillTextToWindows
             return flow;
         }
 
-        private static string Preview(IReadOnlyList<string> values)
+        private static string Preview(IEnumerable<string> values)
         {
             const int maxItems = 6;
 
             var shown = values.Take(maxItems).Select(Truncate);
             var text = string.Join("  →  ", shown);
 
-            return values.Count > maxItems ? text + "  →  ..." : text;
+            return values.Count() > maxItems ? text + "  →  ..." : text;
         }
 
         private static string Truncate(string value)

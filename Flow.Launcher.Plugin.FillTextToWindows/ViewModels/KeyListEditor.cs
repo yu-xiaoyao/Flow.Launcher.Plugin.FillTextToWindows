@@ -41,12 +41,27 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
                 _text = text;
                 Raise(nameof(Text));
                 Raise(nameof(Preview));
+                Raise(nameof(Error));
                 Push();
             }
         }
 
         /// <summary>解析结果的说明，写错的时候直接显示错在哪。</summary>
         public string Preview => KeyParser.DescribeText(_text);
+
+        /// <summary>
+        /// 只有写法有误时才有值，正常时（包括留空）是空串。
+        /// 数据行上每个按键旁边位置紧张，摆不下 <see cref="Preview"/> 那一整句，
+        /// 这里只把出错的那条挑出来显示。
+        /// </summary>
+        public string Error
+        {
+            get
+            {
+                var preview = KeyParser.DescribeText(_text);
+                return preview.StartsWith("⚠", StringComparison.Ordinal) ? preview : string.Empty;
+            }
+        }
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -65,6 +80,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
             _text = text;
             Raise(nameof(Text));
             Raise(nameof(Preview));
+            Raise(nameof(Error));
             Push();
         }
 
@@ -83,6 +99,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
             _text = text;
             Raise(nameof(Text));
             Raise(nameof(Preview));
+            Raise(nameof(Error));
         }
 
         private void Push()

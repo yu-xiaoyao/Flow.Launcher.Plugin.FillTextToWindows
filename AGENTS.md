@@ -47,7 +47,8 @@ Flow Launcher 的结果对应了一个 List<String> 结果, 我想将这个结�
 - **按键走 `SendInput`**：`Interop/KeyboardSimulator.cs`。
 - **按键可配置**：`Keys/KeyParser.cs` 解析 `Settings.NextFieldKeys` 等配置项，
   语法是「组合之间用逗号或空格分隔，组合内部用 `+`」。设置面板会实时显示解析结果。
-- **按键可以录，不用手写**：三个按键字段（设置面板）和每条记录的自定义配置（数据管理窗口）旁边都有「录制」按钮，
+- **按键可以录，不用手写**：三个按键字段（设置面板）、每条记录的自定义配置和数据行的每一段（数据管理窗口）
+  旁边都有「录制」按钮，
   打开 `Views/ShortcutRecorderWindow.xaml`。上半部分是 `ViewModels/ShortcutRecorderViewModel.cs` 里的记录结果
   （`ChordItem` 一条一个组合，能删、能挪），下半部分是 `Views/KeyboardLayout.cs` 里的键盘图——
   纯数据，位置全在 `AllCaps` 里写死（一个字母键 = 4 格），界面那边按格子铺成一个 `Grid`，测试在 `TestDemo/KeyboardLayoutTest.cs`。
@@ -65,13 +66,27 @@ Flow Launcher 的结果对应了一个 List<String> 结果, 我想将这个结�
     它会隐藏，跟着一起藏起来的模态对话框就成了看不见的窗口。
   - 键盘图的坐标是手写的表，改完跑一下 `TestDemo/KeyboardLayoutTest.cs`（每行都必须正好铺满）。
 - **保存的记录**：`Data/FillEntryStore.cs` 用 SQLite 存，两张表——
-  主表 `FillEntries` 存名称和那 8 个配置字段，从表 `FillEntryLines`（`EntryId` / `Value` / `SortOrder`）
-  存每一段数据，`SortOrder` 从 1 开始就是粘贴顺序。更新记录时行数据整体删掉重插，删除记录靠
+  主表 `FillEntries` 存名称和那 8 个配置字段，从表 `FillEntryLines`
+  （`EntryId` / `Value` / `LeadingKeys` / `NextFieldKeys` / `LastFieldKeys` / `SortOrder`）
+  存每一段数据外加这一段的按键，`SortOrder` 从 1 开始就是粘贴顺序。更新记录时行数据整体删掉重插，删除记录靠
   `ON DELETE CASCADE`（所以每次开连接都会 `PRAGMA foreign_keys = ON`）。
   数据库放在 `PluginMetadata.PluginSettingsDirectoryPath` 下（跟着 Flow Launcher 的数据目录走，便携模式也对）。
   注意这条路径属性是 Flow Launcher 2.x + `Flow.Launcher.Plugin` 4.7.0 起才有的，插件必须用 4.7.0 以上。
-- **表结构变了就重建**：`EnsureCreated` 发现老结构的 `FillEntries.ValuesJson` 列就直接
-  `DROP TABLE` 重建（先删从表，主表被外键引用着，顺序反了删不掉），不做数据迁移。
+  查记录的 `SelectEntries` 里，从表的三个按键列**必须起别名**（`AS LineLeadingKeys` 这种）：
+  和主表同名列重名的话 `GetOrdinal` 拿到的是主表那一列。
+- **三层按键配置**：全局配置（设置面板）→ 主表配置（`FillEntry.CustomSettings`，`UseCustomSettings` 总开关）
+  → 数据行配置（`FillEntryLine` 上的三个按键，`UseLineSettings` 总开关）。
+  第三层是叠在第一层或第二层上用的，不是替换（`FillTextHelper.DoStartFillTextAsync` 的执行顺序）：
+  主表开始前按键 → 第 1 段的开始前按键（**只认第 1 段**，整批只在第一个粘贴之前发一次）
+  → 循环｛粘贴 + 该段粘贴后按键（非空顶掉主表，空则回落主表）｝
+  → 最后一段的最后之后按键 → 主表的最后一段之后按键。
+  `FillTextHelper.ToFillTextItem(FillEntry, Settings)` 负责把记录摊成这个结构；模式关着时行上的按键一律置空。
+  界面上每行的按键整块跟着「数据行配置模式」显示 / 隐藏，其中「开始前」只画在第 1 段上——
+  后面几段填了也不会执行，不如不给这个框。
+- **表结构变了**：老结构的 `FillEntries.ValuesJson` 列还在就 `DROP TABLE` 重建（先删从表，主表被外键引用着，
+  顺序反了删不掉），不做数据迁移。只是**新增列**不走重建：`EnsureCreated` 里 `AddedColumns` 表列出后加的列，
+  `EnsureColumn` 查 `pragma_table_info` 没有就 `ALTER TABLE ADD COLUMN`
+  （加 `NOT NULL` 列 SQLite 要求带默认值，那几个定义都给了），老库的用户数据能保住。
 - **管理页面是独立窗口**：`Views/ManagementWindow.xaml`。**故意不设 Owner** —— Flow Launcher 的主窗口
   在 Action 返回 true 之后会被隐藏，设了 Owner 的话这个窗口会跟着一起消失。
 
@@ -111,3 +126,5 @@ Flow Launcher 的结果对应了一个 List<String> 结果, 我想将这个结�
    (5). 按键间隔(毫秒)
    (6). 焦点等待上限(毫秒)
    (7).填充完成后把剪贴板还原成原来的文本
+4. 数据行配置(可选, 勾「数据行配置模式」才生效): 每一段自己的
+   开始前按键 / 粘贴后按键 / 最后一段之后按键, 和上面的自定义配置叠加

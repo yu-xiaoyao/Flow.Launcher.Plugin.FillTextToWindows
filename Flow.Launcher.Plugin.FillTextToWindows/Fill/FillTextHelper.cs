@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Flow.Launcher.Plugin.FillTextToWindows.Data;
 using Flow.Launcher.Plugin.FillTextToWindows.Interop;
 using Flow.Launcher.Plugin.FillTextToWindows.Keys;
 using Flow.Launcher.Plugin.FillTextToWindows.Util;
@@ -100,7 +101,11 @@ public class FillTextHelper
             InnerLogger.Logger.Trace("发送开始之前的按键. 失败");
         }
 
-        // 开始按行复制粘贴数据
+        // 开始按行复制粘贴数据。
+        // 行上的按键（数据行配置模式）和主表的按键是叠加关系：
+        //   开始前按键：主表发完接着发这一行的，整批只在第一个粘贴之前发一次；
+        //   粘贴后按键：非空就顶掉主表的，空的话继续用主表的；
+        //   最后一段之后按键：发在这个循环之后、主表的最后一段之后按键之前。
         for (var i = 0; i < values.Count; i++)
         {
             var lineItem = values[i];
@@ -217,6 +222,42 @@ public class FillTextHelper
             TextData = lineText
         }).ToList();
 
+        return BuildFillTextItem(settings, values);
+    }
+
+    /// <summary>
+    /// 把保存过的记录组装成一次填充任务。
+    /// <para>
+    /// 开了「数据行配置模式」（<see cref="FillEntry.UseLineSettings"/>）时，每一段带上自己的按键；
+    /// 没开就都是空数组，执行时自动回落成主表那一套。
+    /// </para>
+    /// </summary>
+    public static FillTextItem ToFillTextItem(FillEntry entry, Settings settings)
+    {
+        var useLineSettings = entry?.UseLineSettings ?? false;
+        var lines = entry?.Values ?? new List<FillEntryLine>();
+
+        var values = lines.Select(line => new FillTextLineItem
+        {
+            TextData = line.Value,
+            ItemLeadingKeys = LineKeys(useLineSettings, line.LeadingKeys),
+            NextFieldKeys = LineKeys(useLineSettings, line.NextFieldKeys),
+            ItemLastFieldKeys = LineKeys(useLineSettings, line.LastFieldKeys),
+        }).ToList();
+
+        return BuildFillTextItem(settings, values);
+    }
+
+    /// <summary>
+    /// 行上的按键配置：没开数据行配置模式就是空数组，执行时一律走主表。
+    /// </summary>
+    private static IReadOnlyList<string> LineKeys(bool useLineSettings, List<string> keys)
+    {
+        return useLineSettings && keys != null ? keys : new List<string>();
+    }
+
+    private static FillTextItem BuildFillTextItem(Settings settings, IReadOnlyList<FillTextLineItem> values)
+    {
         return new FillTextItem
         {
             BeforeFillDelayMs = 0,

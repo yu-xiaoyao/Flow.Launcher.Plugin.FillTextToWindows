@@ -18,6 +18,8 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
 
         private bool _useCustomSettings;
 
+        private bool _useLineSettings;
+
         private long _entryId;
 
         public EntryDraft()
@@ -33,6 +35,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
 
         /// <summary>
         /// 数据：界面上就是一行一个输入框，从上到下就是粘贴顺序。
+        /// 每一行还带着自己的按键设置，只有「数据行配置模式」开着时才生效。
         /// </summary>
         public ObservableCollection<ValueItem> Values { get; } = new();
 
@@ -58,6 +61,15 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
         {
             get => _useCustomSettings;
             set => SetField(ref _useCustomSettings, value);
+        }
+
+        /// <summary>
+        /// 「数据行配置模式」总开关。开着的时候数据行上的按键才生效，和主表的按键叠加。
+        /// </summary>
+        public bool UseLineSettings
+        {
+            get => _useLineSettings;
+            set => SetField(ref _useLineSettings, value);
         }
 
         public string SegmentSummary
@@ -90,12 +102,14 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
         /// <remarks>
         /// 自定义配置那 6 个字段总是有值：记录自己带自定义配置就用它的，
         /// 否则先用全局配置填上，这样用户勾上「自定义配置」时是从当前全局值开始改，而不是从空白开始。
+        /// 数据行上的按键没这回事，新建时就是空的，空着的那一段自动用主表的配置。
         /// </remarks>
         public void LoadFrom(FillEntry entry, Settings globalSettings)
         {
             _entryId = entry?.Id ?? 0;
             Name = entry?.Name ?? string.Empty;
             UseCustomSettings = entry?.UseCustomSettings ?? false;
+            UseLineSettings = entry?.UseLineSettings ?? false;
 
             Values.Clear();
 
@@ -106,9 +120,9 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
             }
             else
             {
-                foreach (var value in entry.Values)
+                foreach (var line in entry.Values)
                 {
-                    AddValue(value);
+                    AddLine(line);
                 }
             }
 
@@ -130,6 +144,17 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
             return item;
         }
 
+        /// <summary>
+        /// 末尾加一个输入框，内容和三个按键都按记录里的一段填好。
+        /// </summary>
+        private ValueItem AddLine(FillEntryLine line)
+        {
+            var item = new ValueItem();
+            item.LoadLine(line);
+            Values.Add(item);
+            return item;
+        }
+
         public void RemoveValue(ValueItem item)
         {
             if (item != null)
@@ -147,29 +172,38 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
             {
                 Id = _entryId,
                 Name = (Name ?? string.Empty).Trim(),
-                Values = ParseValues(),
+                Values = ParseLines(),
                 UseCustomSettings = UseCustomSettings,
                 CustomSettings = CustomSettings.Clone(),
+                UseLineSettings = UseLineSettings,
             };
         }
 
         /// <summary>
-        /// 按界面顺序取出真正要粘贴的内容，空白项直接跳过。
+        /// 按界面顺序取出真正要保存的数据行（内容和每一行自己的按键），空白项直接跳过。
         /// </summary>
-        public List<string> ParseValues()
+        public List<FillEntryLine> ParseLines()
         {
-            var values = new List<string>();
+            var lines = new List<FillEntryLine>();
 
             foreach (var item in Values)
             {
-                var trimmed = (item.Text ?? string.Empty).Trim();
-                if (trimmed.Length > 0)
+                var line = item.ToLine();
+                if (line.Value.Length > 0)
                 {
-                    values.Add(trimmed);
+                    lines.Add(line);
                 }
             }
 
-            return values;
+            return lines;
+        }
+
+        /// <summary>
+        /// 只要内容，界面上用来数这一条有几段。
+        /// </summary>
+        public List<string> ParseValues()
+        {
+            return ParseLines().Select(line => line.Value).ToList();
         }
 
         /// <summary>
@@ -181,20 +215,48 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
             {
                 return string.IsNullOrWhiteSpace(Name)
                     && Values.All(item => string.IsNullOrWhiteSpace(item.Text))
-                    && !UseCustomSettings;
+                    && !UseCustomSettings
+                    && !UseLineSettings;
             }
 
             if (!string.Equals(Name ?? string.Empty, entry.Name ?? string.Empty, StringComparison.Ordinal)
-                || !string.Equals(
-                    string.Join("\n", ParseValues()),
-                    string.Join("\n", entry.Values),
-                    StringComparison.Ordinal)
-                || UseCustomSettings != entry.UseCustomSettings)
+                || !LinesEqual(ParseLines(), entry.Values)
+                || UseCustomSettings != entry.UseCustomSettings
+                || UseLineSettings != entry.UseLineSettings)
             {
                 return false;
             }
 
             return !UseCustomSettings || SettingsEqual(CustomSettings, entry.CustomSettings);
+        }
+
+        /// <summary>
+        /// 内容和每一行自己的按键都要对得上，才算这一段没改过。
+        /// </summary>
+        private static bool LinesEqual(IReadOnlyList<FillEntryLine> left, IReadOnlyList<FillEntryLine> right)
+        {
+            if (left == null || right == null)
+            {
+                return left == right;
+            }
+
+            if (left.Count != right.Count)
+            {
+                return false;
+            }
+
+            for (var i = 0; i < left.Count; i++)
+            {
+                if (!string.Equals(left[i].Value ?? string.Empty, right[i].Value ?? string.Empty, StringComparison.Ordinal)
+                    || !KeysEqual(left[i].LeadingKeys, right[i].LeadingKeys)
+                    || !KeysEqual(left[i].NextFieldKeys, right[i].NextFieldKeys)
+                    || !KeysEqual(left[i].LastFieldKeys, right[i].LastFieldKeys))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private static bool SettingsEqual(Settings left, Settings right)

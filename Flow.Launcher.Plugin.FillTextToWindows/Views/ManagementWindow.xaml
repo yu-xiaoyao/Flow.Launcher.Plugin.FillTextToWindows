@@ -6,15 +6,20 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:vm="clr-namespace:Flow.Launcher.Plugin.FillTextToWindows.ViewModels"
     Title="FillTextToWindows 数据管理"
-    Width="880"
-    Height="600"
-    MinWidth="760"
+    Width="1000"
+    Height="620"
+    MinWidth="920"
     MinHeight="500"
     d:DataContext="{d:DesignInstance Type=vm:ManagementViewModel}"
     FontSize="13"
     ShowInTaskbar="True"
     WindowStartupLocation="CenterScreen"
     mc:Ignorable="d">
+
+    <Window.Resources>
+        <!-- 「数据行配置模式」的总开关：关着的时候每行的按键设置整块不显示 -->
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+    </Window.Resources>
 
     <Grid Margin="14">
         <Grid.RowDefinitions>
@@ -95,35 +100,154 @@
                             Grid.Row="1"
                             Grid.Column="1"
                             Margin="0,10,0,0">
+
+                            <CheckBox
+                                Margin="0,0,0,6"
+                                Content="数据行配置模式（每一段配自己的按键，和下面的主表配置叠加）"
+                                IsChecked="{Binding Draft.UseLineSettings}"
+                                ToolTip="开始前按键只在第 1 段粘贴之前发一次；粘贴后按键填了会顶掉主表的「切换输入框」；最后一段之后按键排在主表的前面。" />
+                            <TextBlock
+                                Margin="0,0,0,8"
+                                FontSize="12"
+                                Foreground="#FF6B6B6B"
+                                TextWrapping="Wrap"
+                                Visibility="{Binding Draft.UseLineSettings, Converter={StaticResource BoolToVisibility}}"
+                                Text="开始前按键只在第 1 段粘贴之前发一次；粘贴后按键填了会顶掉主表的「切换输入框」；最后一段之后按键排在主表的前面。" />
+
                             <ItemsControl x:Name="ValueList" ItemsSource="{Binding Draft.Values}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Grid Margin="0,0,0,4">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="24" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock
-                                                Grid.Column="0"
-                                                Margin="0,0,8,0"
-                                                HorizontalAlignment="Right"
-                                                VerticalAlignment="Center"
-                                                FontSize="12"
-                                                Foreground="#FF9A9A9A"
-                                                Text="{Binding Order}" />
-                                            <TextBox
-                                                Grid.Column="1"
-                                                Padding="4,3"
-                                                Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" />
-                                            <Button
-                                                Grid.Column="2"
-                                                Width="52"
-                                                Margin="6,0,0,0"
-                                                Padding="0,2"
-                                                Click="OnRemoveValueClick"
-                                                Content="删除" />
-                                        </Grid>
+                                        <StackPanel Margin="0,0,0,6">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="24" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock
+                                                    Grid.Column="0"
+                                                    Margin="0,0,8,0"
+                                                    HorizontalAlignment="Right"
+                                                    VerticalAlignment="Center"
+                                                    FontSize="12"
+                                                    Foreground="#FF9A9A9A"
+                                                    Text="{Binding Order}" />
+                                                <TextBox
+                                                    Grid.Column="1"
+                                                    Padding="4,3"
+                                                    Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" />
+                                                <Button
+                                                    Grid.Column="2"
+                                                    Width="52"
+                                                    Margin="6,0,0,0"
+                                                    Padding="0,2"
+                                                    Click="OnRemoveValueClick"
+                                                    Content="删除" />
+                                            </Grid>
+
+                                            <!--
+                                                这一段的按键。整块跟着「数据行配置模式」显示 / 隐藏，
+                                                免得没开这个模式时数据行看着一大坨。
+                                            -->
+                                            <WrapPanel
+                                                Margin="24,4,0,0"
+                                                Visibility="{Binding DataContext.Draft.UseLineSettings, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}">
+
+                                                <StackPanel
+                                                    Margin="0,0,14,4"
+                                                    Orientation="Horizontal"
+                                                    Visibility="{Binding IsFirst, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock
+                                                        Margin="0,0,4,0"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="12"
+                                                        Foreground="#FF6B6B6B"
+                                                        Text="开始前" />
+                                                    <TextBox
+                                                        Width="88"
+                                                        Padding="3,2"
+                                                        FontSize="12"
+                                                        Text="{Binding LeadingKeys.Text, UpdateSourceTrigger=PropertyChanged}" />
+                                                    <Button
+                                                        Width="38"
+                                                        Margin="4,0,0,0"
+                                                        Padding="0,1"
+                                                        VerticalAlignment="Center"
+                                                        Click="OnRecordValueLeadingKeysClick"
+                                                        Content="录制"
+                                                        FontSize="11"
+                                                        ToolTip="弹出键盘图，敲键盘、点键帽都能录" />
+                                                    <TextBlock
+                                                        Margin="4,0,0,0"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="11"
+                                                        Foreground="#FFC0392B"
+                                                        Text="{Binding LeadingKeys.Error}" />
+                                                </StackPanel>
+
+                                                <StackPanel
+                                                    Margin="0,0,14,4"
+                                                    Orientation="Horizontal">
+                                                    <TextBlock
+                                                        Margin="0,0,4,0"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="12"
+                                                        Foreground="#FF6B6B6B"
+                                                        Text="粘贴后" />
+                                                    <TextBox
+                                                        Width="88"
+                                                        Padding="3,2"
+                                                        FontSize="12"
+                                                        Text="{Binding NextFieldKeys.Text, UpdateSourceTrigger=PropertyChanged}" />
+                                                    <Button
+                                                        Width="38"
+                                                        Margin="4,0,0,0"
+                                                        Padding="0,1"
+                                                        VerticalAlignment="Center"
+                                                        Click="OnRecordValueNextFieldKeysClick"
+                                                        Content="录制"
+                                                        FontSize="11"
+                                                        ToolTip="弹出键盘图，敲键盘、点键帽都能录" />
+                                                    <TextBlock
+                                                        Margin="4,0,0,0"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="11"
+                                                        Foreground="#FFC0392B"
+                                                        Text="{Binding NextFieldKeys.Error}" />
+                                                </StackPanel>
+
+                                                <StackPanel
+                                                    Margin="0,0,0,4"
+                                                    Orientation="Horizontal">
+                                                    <TextBlock
+                                                        Margin="0,0,4,0"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="12"
+                                                        Foreground="#FF6B6B6B"
+                                                        Text="最后之后" />
+                                                    <TextBox
+                                                        Width="88"
+                                                        Padding="3,2"
+                                                        FontSize="12"
+                                                        Text="{Binding LastFieldKeys.Text, UpdateSourceTrigger=PropertyChanged}" />
+                                                    <Button
+                                                        Width="38"
+                                                        Margin="4,0,0,0"
+                                                        Padding="0,1"
+                                                        VerticalAlignment="Center"
+                                                        Click="OnRecordValueLastFieldKeysClick"
+                                                        Content="录制"
+                                                        FontSize="11"
+                                                        ToolTip="弹出键盘图，敲键盘、点键帽都能录" />
+                                                    <TextBlock
+                                                        Margin="4,0,0,0"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="11"
+                                                        Foreground="#FFC0392B"
+                                                        Text="{Binding LastFieldKeys.Error}" />
+                                                </StackPanel>
+                                            </WrapPanel>
+                                        </StackPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
