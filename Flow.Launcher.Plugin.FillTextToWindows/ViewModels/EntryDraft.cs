@@ -44,6 +44,9 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
             PasteDelay = new DelayEditor(null, 0);
             KeyDelay = new DelayEditor(null, 0);
 
+            // 行上的「填充后延迟」留空就跟主表走，主表这个框一改就得把提示刷一遍
+            PasteDelay.PropertyChanged += OnPasteDelayChanged;
+
             Values.CollectionChanged += OnValuesCollectionChanged;
         }
 
@@ -303,7 +306,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
         }
 
         /// <summary>
-        /// 内容和每一行自己的按键都要对得上，才算这一段没改过。
+        /// 内容、每一段的按键前 / 按键后延迟和三个按键都要对得上，才算这一段没改过。
         /// </summary>
         private static bool LinesEqual(IReadOnlyList<FillEntryLine> left, IReadOnlyList<FillEntryLine> right)
         {
@@ -320,6 +323,8 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
             for (var i = 0; i < left.Count; i++)
             {
                 if (!string.Equals(left[i].Value ?? string.Empty, right[i].Value ?? string.Empty, StringComparison.Ordinal)
+                    || left[i].LineBeforeFillDelay != right[i].LineBeforeFillDelay
+                    || left[i].LineAfterFillDelay != right[i].LineAfterFillDelay
                     || !KeysEqual(left[i].LeadingKeys, right[i].LeadingKeys)
                     || !KeysEqual(left[i].NextFieldKeys, right[i].NextFieldKeys)
                     || !KeysEqual(left[i].LastFieldKeys, right[i].LastFieldKeys))
@@ -355,7 +360,33 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
             }
 
             Renumber();
+            ApplyLineAfterFillDelayFallback();
             Raise(nameof(SegmentSummary));
+        }
+
+        /// <summary>
+        /// 主表的「粘贴后等待」改了，每一行那个框的提示要跟着变。
+        /// </summary>
+        private void OnPasteDelayChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(DelayEditor.Value))
+            {
+                ApplyLineAfterFillDelayFallback();
+            }
+        }
+
+        /// <summary>
+        /// 把主表当前的「粘贴后等待」告诉每一行：行上留空或者写 0 的时候用的就是它。
+        /// 主表这个值本身也可能是留空的（跟着全局设置走），那就用设置面板里的那个数。
+        /// </summary>
+        private void ApplyLineAfterFillDelayFallback()
+        {
+            var fallback = PasteDelay.Value ?? _globalSettings.PasteDelayMs;
+
+            foreach (var item in Values)
+            {
+                item.LineAfterFillDelay.SetFallback(fallback);
+            }
         }
 
         private void OnValueItemChanged(object sender, PropertyChangedEventArgs e)

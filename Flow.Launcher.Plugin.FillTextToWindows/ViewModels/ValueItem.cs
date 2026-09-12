@@ -33,6 +33,12 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
             LeadingKeys = new KeyListEditor(_leadingKeys, keys => _leadingKeys = keys);
             NextFieldKeys = new KeyListEditor(_nextFieldKeys, keys => _nextFieldKeys = keys);
             LastFieldKeys = new KeyListEditor(_lastFieldKeys, keys => _lastFieldKeys = keys);
+
+            // 行上的延迟没有固定的全局值可跟，留空就是不额外等
+            LineBeforeFillDelay = new DelayEditor(null, null);
+
+            // 行上的填充后延迟留空或者写 0 都算没单独设，用主表那份（主表改了 EntryDraft 会来刷这里的提示）
+            LineAfterFillDelay = new DelayEditor(null, null, "主表", zeroIsUnset: true);
         }
 
         /// <summary>这一段要粘贴的内容。</summary>
@@ -87,6 +93,15 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
             set => SetField(ref _isLast, value);
         }
 
+        /// <summary>这一段的「填充前延迟」：这一段开始之前先等多久，留空就是不额外等。</summary>
+        public DelayEditor LineBeforeFillDelay { get; }
+
+        /// <summary>
+        /// 这一段的「填充后延迟」：留空或者 0 都算没单独设，用主表的「粘贴后等待」。
+        /// 提示里要显示的回落值由 <see cref="EntryDraft"/> 统一刷。
+        /// </summary>
+        public DelayEditor LineAfterFillDelay { get; }
+
         /// <summary>这一段的「开始前按键」，接在主表的后面。</summary>
         public KeyListEditor LeadingKeys { get; }
 
@@ -109,6 +124,11 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
             _nextFieldKeys = CopyKeys(line?.NextFieldKeys);
             _lastFieldKeys = CopyKeys(line?.LastFieldKeys);
 
+            LineBeforeFillDelay.Load(line?.LineBeforeFillDelay, null);
+
+            // 回落值传 null，等 EntryDraft 加完这一段统一刷（它才知道主表现在是哪个值）
+            LineAfterFillDelay.Load(line?.LineAfterFillDelay, null);
+
             // 是外面换了数据，这里只同步原文，别写回去（KeyListEditor.Load 就是这么设计的）
             LeadingKeys.Load(_leadingKeys);
             NextFieldKeys.Load(_nextFieldKeys);
@@ -123,6 +143,8 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
             return new FillEntryLine
             {
                 Value = (Text ?? string.Empty).Trim(),
+                LineBeforeFillDelay = LineBeforeFillDelay.Value,
+                LineAfterFillDelay = LineAfterFillDelay.Value,
                 LeadingKeys = CopyKeys(_leadingKeys),
                 NextFieldKeys = CopyKeys(_nextFieldKeys),
                 LastFieldKeys = CopyKeys(_lastFieldKeys),

@@ -7,9 +7,9 @@
     xmlns:vm="clr-namespace:Flow.Launcher.Plugin.FillTextToWindows.ViewModels"
     xmlns:views="clr-namespace:Flow.Launcher.Plugin.FillTextToWindows.Views"
     Title="FillTextToWindows 数据管理"
-    Width="1000"
-    Height="620"
-    MinWidth="920"
+    Width="1140"
+    Height="640"
+    MinWidth="1020"
     MinHeight="500"
     d:DataContext="{d:DesignInstance Type=vm:ManagementViewModel}"
     FontSize="13"
@@ -105,16 +105,17 @@
 
                             <CheckBox
                                 Margin="0,0,0,6"
-                                Content="数据行配置模式（每一段配自己的按键，和下面的主表配置叠加）"
+                                Content="数据行配置模式（每一段配自己的延迟和按键，和下面的主表配置叠加）"
                                 IsChecked="{Binding Draft.UseLineSettings}"
-                                ToolTip="开始前按键只在第 1 段粘贴之前发一次；粘贴后按键填了会顶掉主表的「切换输入框」；最后一段之后按键排在主表的前面。每一段只显示它自己会用到的按键。" />
+                                ToolTip="延迟每一段都有：按键前延迟（这一段的按键之前各等各的）、按键后延迟（留空或 0 就用主表的「粘贴后等待」）。按键只显示这一段会用到的：开始前只在第 1 段粘贴之前发一次；粘贴后填了会顶掉主表的「切换输入框」；最后之后排在主表的前面，只有最后一段用得上。"
+                                />
                             <TextBlock
                                 Margin="0,0,0,8"
                                 FontSize="12"
                                 Foreground="#FF6B6B6B"
                                 TextWrapping="Wrap"
                                 Visibility="{Binding Draft.UseLineSettings, Converter={StaticResource BoolToVisibility}}"
-                                Text="每一段只显示它自己会用到的按键：开始前（只在第 1 段粘贴之前发一次）/ 粘贴后（填了会顶掉主表的「切换输入框」）/ 最后之后（排在主表的前面，只有最后一段用得上）。" />
+                                Text="延迟每一段都有：按键前延迟（这一段的按键之前各等各的）、按键后延迟（留空或 0 就用主表的「粘贴后等待」）。按键只显示这一段会用到的：开始前（只在第 1 段粘贴之前发一次）/ 粘贴后（填了会顶掉主表的「切换输入框」）/ 最后之后（排在主表的前面，只有最后一段用得上）。" />
 
                             <ItemsControl x:Name="ValueList" ItemsSource="{Binding Draft.Values}">
                                 <ItemsControl.ItemTemplate>
@@ -148,15 +149,70 @@
                                             </Grid>
 
                                             <!--
-                                                这一段的按键，只显示执行时真正会用到的那些：
+                                                这一段的按键和延迟，只显示执行时真正会用到的那些：
                                                 开始前按键整批只在第 1 段之前发一次，粘贴后按键最后一段用不到
                                                 （最后一段发的是「最后之后按键」），于是第 1 段显示前两个、
                                                 中间几段只显示粘贴后、最后一段只显示最后之后。
+                                                按键前延迟每一段都会等自己这一份，所以每一行都有。
                                                 整块跟着「数据行配置模式」显示 / 隐藏，免得没开时数据行看着一大坨。
                                             -->
                                             <WrapPanel
-                                                Margin="24,4,0,0"
+                                                Margin="16,4,0,0"
                                                 Visibility="{Binding DataContext.Draft.UseLineSettings, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}">
+
+                                                <StackPanel Margin="0,0,14,4" Orientation="Horizontal">
+                                                    <TextBlock
+                                                        Margin="0,0,4,0"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="12"
+                                                        Foreground="#FF6B6B6B"
+                                                        Text="按键前延迟" />
+                                                    <TextBox
+                                                        Width="56"
+                                                        Padding="3,2"
+                                                        FontSize="12"
+                                                        Text="{Binding LineBeforeFillDelay.Text, UpdateSourceTrigger=PropertyChanged}"
+                                                        ToolTip="粘贴这一段之前先等这么久，也就是这一段的按键发出去之前；留空就是不等" />
+                                                    <TextBlock
+                                                        Margin="4,0,0,0"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="11"
+                                                        Foreground="#FF9A9A9A"
+                                                        Text="毫秒" />
+                                                    <TextBlock
+                                                        Margin="4,0,0,0"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="11"
+                                                        Foreground="#FFC0392B"
+                                                        Text="{Binding LineBeforeFillDelay.Error}" />
+                                                </StackPanel>
+
+                                                <StackPanel Margin="0,0,14,4" Orientation="Horizontal">
+                                                    <TextBlock
+                                                        Margin="0,0,4,0"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="12"
+                                                        Foreground="#FF6B6B6B"
+                                                        Text="按键后延迟" />
+                                                    <TextBox
+                                                        Width="56"
+                                                        Padding="3,2"
+                                                        FontSize="12"
+                                                        Text="{Binding LineAfterFillDelay.Text, UpdateSourceTrigger=PropertyChanged}"
+                                                        ToolTip="这一段粘贴（Ctrl+V）之后、发后面的按键之前等这么久；留空或者填 0 就是用主表的「粘贴后等待」" />
+                                                    <TextBlock
+                                                        Margin="4,0,0,0"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="11"
+                                                        Foreground="#FF9A9A9A"
+                                                        Text="毫秒" />
+                                                    <TextBlock
+                                                        Margin="4,0,0,0"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="11"
+                                                        Foreground="#FFC0392B"
+                                                        Text="{Binding LineAfterFillDelay.Error}" />
+                                                </StackPanel>
 
                                                 <StackPanel
                                                     Margin="0,0,14,4"
@@ -290,6 +346,7 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
+                        <!-- 开始前按键 -->
                         <TextBlock
                             Grid.Row="0"
                             Grid.Column="0"
@@ -324,6 +381,7 @@
                             Foreground="#FF6B6B6B"
                             Text="{Binding Draft.LeadingKeys.Preview}" />
 
+                        <!-- 切换按键 -->
                         <TextBlock
                             Grid.Row="1"
                             Grid.Column="0"
@@ -358,12 +416,13 @@
                             Foreground="#FF6B6B6B"
                             Text="{Binding Draft.NextFieldKeys.Preview}" />
 
+                        <!-- 结束后按键 -->
                         <TextBlock
                             Grid.Row="2"
                             Grid.Column="0"
                             Margin="0,0,10,4"
                             VerticalAlignment="Center"
-                            Text="最后一段之后" />
+                            Text="结束后按键" />
                         <StackPanel
                             Grid.Row="2"
                             Grid.Column="1"
@@ -445,7 +504,7 @@
                             Grid.Column="0"
                             Margin="0,0,10,4"
                             VerticalAlignment="Center"
-                            Text="粘贴后等待" />
+                            Text="填充后等待" />
                         <DockPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,4">
                             <TextBlock
                                 DockPanel.Dock="Right"
@@ -474,7 +533,7 @@
                             Grid.Column="0"
                             Margin="0,0,10,4"
                             VerticalAlignment="Center"
-                            Text="按键间隔" />
+                            Text="按键后等待" />
                         <DockPanel Grid.Row="2" Grid.Column="1" Margin="0,0,0,4">
                             <TextBlock
                                 DockPanel.Dock="Right"

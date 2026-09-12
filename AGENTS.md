@@ -67,25 +67,34 @@ Flow Launcher 的结果对应了一个 List<String> 结果, 我想将这个结�
   - 键盘图的坐标是手写的表，改完跑一下 `TestDemo/KeyboardLayoutTest.cs`（每行都必须正好铺满）。
 - **保存的记录**：`Data/FillEntryStore.cs` 用 SQLite 存，两张表——
   主表 `FillEntries` 存名称、三个按键、两个开关和四个可空的延迟/剪贴板字段，从表 `FillEntryLines`
-  （`EntryId` / `Value` / `LeadingKeys` / `NextFieldKeys` / `LastFieldKeys` / `SortOrder`）
-  存每一段数据外加这一段的按键，`SortOrder` 从 1 开始就是粘贴顺序。更新记录时行数据整体删掉重插，删除记录靠
+  （`EntryId` / `Value` / `LineBeforeFillDelay` / `LineAfterFillDelay` / `LeadingKeys` / `NextFieldKeys` /
+  `LastFieldKeys` / `SortOrder`）
+  存每一段数据、这一段的两个延迟和按键，`SortOrder` 从 1 开始就是粘贴顺序。更新记录时行数据整体删掉重插，删除记录靠
   `ON DELETE CASCADE`（所以每次开连接都会 `PRAGMA foreign_keys = ON`）。
+  从表那两个延迟列跟着 `FillEntryLine` 一起改过两次名，现在叫 `LineBeforeFillDelay` / `LineAfterFillDelay`；
+  老库会被 `RequiredColumns` 当成缺列整张重建，记录要重新录一遍。
   数据库放在 `PluginMetadata.PluginSettingsDirectoryPath` 下（跟着 Flow Launcher 的数据目录走，便携模式也对）。
   注意这条路径属性是 Flow Launcher 2.x + `Flow.Launcher.Plugin` 4.7.0 起才有的，插件必须用 4.7.0 以上。
   查记录的 `SelectEntries` 里，从表的三个按键列**必须起别名**（`AS LineLeadingKeys` 这种）：
   和主表同名列重名的话 `GetOrdinal` 拿到的是主表那一列。
-- **三层按键配置**：全局配置（设置面板）→ 主表配置（`FillEntry.LeadingKeys` 等，`UseCustomSettings` 总开关）
-  → 数据行配置（`FillEntryLine` 上的三个按键，`UseLineSettings` 总开关）。
+- **三层按键配置 + 行上的延迟**：全局配置（设置面板）→ 主表配置（`FillEntry.LeadingKeys` 等，`UseCustomSettings` 总开关）
+  → 数据行配置（`FillEntryLine` 上的三个按键和两个延迟，`UseLineSettings` 总开关）。
   第三层是叠在第一层或第二层上用的，不是替换（`FillTextHelper.DoStartFillTextAsync` 的执行顺序）：
-  主表开始前按键 → 第 1 段的开始前按键（**只认第 1 段**，整批只在第一个粘贴之前发一次）
-  → 循环｛粘贴 + 该段粘贴后按键（非空顶掉主表，空则回落主表）｝
+  主表开始前等待 → 主表开始前按键
+  → 循环｛**这一段自己的填充前延迟** → 第 1 段的开始前按键（**只认第 1 段**，整批只发一次）
+  → 粘贴（`Ctrl+V` 之前等的是主表 / 全局那份「粘贴后等待」）→ **这一段自己的填充后延迟**
+  → 该段粘贴后按键（非空顶掉主表，空则回落主表）｝
   → 最后一段的最后之后按键 → 主表的最后一段之后按键。
-  `FillTextHelper.ToFillTextItem(FillEntry, Settings)` 负责把记录摊成这个结构；模式关着时行上的按键一律置空。
-  界面上每行的按键整块跟着「数据行配置模式」显示 / 隐藏，而且**只显示这一段真正会用到的按键**：
+  行上的填充前延迟是**每一段各等各的**，和主表那个「整批只等一次」不是一回事。
+  `FillTextHelper.ToFillTextItem(FillEntry, Settings)` 负责把记录摊成这个结构（行上的填充后延迟就是在这儿定下来的）；
+  模式关着时行上的延迟和按键一律清零。
+  界面上每行的这一块跟着「数据行配置模式」显示 / 隐藏，而且**只显示这一段真正会用到的那些**：
+  两个延迟每一段都有（填充前延迟 + 填充后延迟），按键按位置筛——
   第 1 段显示「开始前 + 粘贴后」、最后一段显示「最后之后」、中间几段只显示「粘贴后」
-  （只有一段时是「开始前 + 最后之后」）。这个规则由 `ValueItem.IsFirst` / `IsLast` 驱动，
+  （只有一段时是「开始前 + 最后之后」）。筛选由 `ValueItem.IsFirst` / `IsLast` 驱动，
   两个标记在 `EntryDraft.Renumber()` 里跟着增删一起重算；「不是最后一段才显示」那处用
   `Views/InverseBooleanToVisibilityConverter.cs`（WPF 自带的只有正向那个）。
+  管理窗口宽 1140：第 1 段一行要摊「按键前延迟 + 按键后延迟 + 开始前 + 粘贴后」四块，窄了会折行。
   `FillTextHelper.DescribeFlow(FillTextItem)` 把这份顺序渲染成一步一行的操作流程文本（预览 / 打日志用），
   **它和 `DoStartFillTextAsync` 是照着写的，改执行顺序时两边一起改**。
 - **延迟/剪贴板是逐项的，按键是整层的**：`BeforeFillDelayMs` / `PasteDelayMs` / `KeyDelayMs` /
@@ -94,9 +103,21 @@ Flow Launcher 的结果对应了一个 List<String> 结果, 我想将这个结�
   所以一条记录只勾「自定义按键」、只改「按键间隔」就行，另外几项继续跟着设置面板变。
   界面上这几项**不跟着「自定义按键」开关变灰**，数字框留空 / 写错都按 null 算，旁边灰字说明会跟到哪个全局值；
   剪贴板那个勾选框是三态的（`IsThreeState`），半选 = null。
-  三个延迟框共用 `ViewModels/DelayEditor.cs`（和 `KeyListEditor` 一个路子：存原文、用的时候才解析）。
+  记录上的四个延迟框共用 `ViewModels/DelayEditor.cs`（和 `KeyListEditor` 一个路子：存原文、用的时候才解析）。
   **别把数字框直接绑到 `int?` 上**：清空时 WPF 不会写出 null，而是**保留旧值**，
   看着像清掉了实际还生效（单独建了个 WPF 小程序实测过）。
+- **行上两个延迟的回落规则不一样**：
+  `FillEntryLine.LineBeforeFillDelay`（界面上叫「按键前延迟」）虽然可空，但留空就是 0（不额外等），
+  没有「跟谁走」这回事 —— 它和主表的开始前等待管的是两件事。
+  `FillEntryLine.LineAfterFillDelay`（界面上叫「按键后延迟」）反过来，**留空或者 0 都算没单独设**，
+  用主表那份（`LineAfterFillDelay`）。
+  `DelayEditor` 的第二个参数是 `int? fallbackValue`（有值才显示「跟 X 走（当前 N）」，传 null 就显示
+  「留空就是不等」）、第三个是 `string fallbackLabel`（主表那几个跟的是「全局」，行上跟的是「主表」）、
+  第四个是 `bool zeroIsUnset`（行上的填充后延迟才开）。
+  行上这两个框绑的是 `DelayEditor.Error` 而不是 `.Hint`，因为默认就是空的，
+  每行铺一句提示太吵，只在该报错的时候报错。
+  主表的「粘贴后等待」一改，`EntryDraft.ApplyLineAfterFillDelayFallback()` 会把每一行那个框的回落值刷一遍
+  （`DelayEditor.SetFallback`，只换值不动原文）。
 - **开始前等待**：`BeforeFillDelayMs` 是 `DoStartFillTextAsync` 里最先等的那一段（发任何按键之前），
   走 `BuildFillTextItem` 进 `FillTextItem`，和另外几个延迟一样，记录里留空就跟全局走。
   曾在末尾加过一个对称的 `LastFillDelayMs`，实测没用就删了，别再往回加。
@@ -146,4 +167,5 @@ Flow Launcher 的结果对应了一个 List<String> 结果, 我想将这个结�
    (3). 按键间隔(毫秒)
    (4). 填充完成后把剪贴板还原成原来的文本
 5. 数据行配置(可选, 勾「数据行配置模式」才生效): 每一段自己的
+   按键前延迟(每一段的按键之前各等各的) / 按键后延迟(留空或 0 就用主表的) /
    开始前按键 / 粘贴后按键 / 最后一段之后按键, 和上面的自定义按键叠加

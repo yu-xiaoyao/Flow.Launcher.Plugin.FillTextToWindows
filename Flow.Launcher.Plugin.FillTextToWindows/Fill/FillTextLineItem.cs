@@ -12,6 +12,18 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Fill;
 public class FillTextLineItem
 {
     /// <summary>
+    /// 行上的填充前延迟（毫秒）：这一段开始之前先等多久，也就是这一段的按键发出去之前。
+    /// 每一段都会等自己这一份，没开数据行配置模式时一律是 0。
+    /// </summary>
+    public int LineBeforeFillDelay { get; set; }
+
+    /// <summary>
+    /// 行上的填充后延迟（毫秒）：这一段粘贴（Ctrl+V）之后、发后面的按键之前等多久。
+    /// 组装的时候就定好了：这一段没单独设（留空或者 0）就用主表 / 全局那份。
+    /// </summary>
+    public int LineAfterFillDelay { get; set; }
+
+    /// <summary>
     /// 开始前按键。主表 <see cref="FillTextItem.LeadingKeys"/> 先执行，接着才执行这个。
     /// 只认第一段的：开始前按键整批只在第一个粘贴之前发一次。
     /// </summary>

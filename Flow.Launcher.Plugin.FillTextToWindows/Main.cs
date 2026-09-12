@@ -101,10 +101,10 @@ namespace Flow.Launcher.Plugin.FillTextToWindows
             FillTextHelper.SetFillItem(FillTextHelper.ToFillTextItem(values, settings));
         }
 
-        private static void _setStartFillItem(FillEntry entry, Settings settings)
+        private static void _setStartFillItem(FillEntry entry, Settings entrySettings)
         {
             FillTextHelper.ResetFill();
-            FillTextHelper.SetFillItem(FillTextHelper.ToFillTextItem(entry, settings));
+            FillTextHelper.SetFillItem(FillTextHelper.ToFillTextItem(entry, entrySettings));
         }
 
 
@@ -227,9 +227,11 @@ namespace Flow.Launcher.Plugin.FillTextToWindows
 
         private Result BuildEntryResult(FillEntry entry, string search)
         {
+            var entrySettings = entry.ResolveSettings(_settings);
+            
             var subtitle = Preview(entry.Values.Select(line => line.Value))
                            + "   ·   "
-                           + DescribeFlow(entry.ResolveSettings(_settings))
+                           + DescribeFlow(entrySettings)
                            + (entry.UseCustomSettings ? "   ·   自定义按键" : string.Empty)
                            + (entry.UseLineSettings ? "   ·   每段独立按键" : string.Empty);
 
@@ -242,7 +244,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows
                 Action = _ =>
                 {
                     // StartFill(entry.Values, entry.ResolveSettings(_settings));
-                    _setStartFillItem(entry, entry.ResolveSettings(_settings));
+                    _setStartFillItem(entry, entrySettings);
                     return true;
                 },
             };

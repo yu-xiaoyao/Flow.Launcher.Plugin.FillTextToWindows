@@ -84,7 +84,6 @@ public class FillTextHelper
         InnerLogger.Logger.Debug($"{DescribeFlow(item)}");
 
         var keyDelayMs = item.KeyDelayMs;
-        var pasteDelayMs = item.PasteDelayMs;
         var values = item.Values;
         var size = values.Count;
         if (size <= 0) return;
@@ -106,13 +105,20 @@ public class FillTextHelper
         }
 
         // 开始按行复制粘贴数据。
-        // 行上的按键（数据行配置模式）和主表的按键是叠加关系：
+        // 行上的按键和延迟（数据行配置模式）和主表是叠加关系：
+        //   填充前延迟：每一段等自己这一份，在主表的开始前等待和按键之后；
+        //   填充后延迟：填了（大于 0）就顶掉主表的「粘贴后等待」，留空或者 0 继续用主表的；
         //   开始前按键：主表发完接着发这一行的，整批只在第一个粘贴之前发一次；
         //   粘贴后按键：非空就顶掉主表的，空的话继续用主表的；
         //   最后一段之后按键：发在这个循环之后、主表的最后一段之后按键之前。
         for (var i = 0; i < values.Count; i++)
         {
             var lineItem = values[i];
+
+            // line before key delay
+            success = await WaitMills(metadata, lineItem.LineBeforeFillDelay);
+            if (!success) return;
+
             if (i == 0)
             {
                 // 发送前执行按键
@@ -120,8 +126,12 @@ public class FillTextHelper
                 if (!success) return;
             }
 
-            // 开始复制/粘贴
-            success = await FillText(metadata, lineItem.TextData, keyDelayMs, pasteDelayMs);
+            // 开始复制/粘贴.
+            success = await FillText(metadata, lineItem.TextData, item.PasteDelayMs);
+            if (!success) return;
+
+            // line after key delay
+            success = await WaitMills(metadata, lineItem.LineAfterFillDelay);
             if (!success) return;
 
             var isLast = i == values.Count - 1;
@@ -148,8 +158,7 @@ public class FillTextHelper
         await SendKeys(metadata, item.LastFieldKeys, keyDelayMs);
     }
 
-    private static async Task<bool> FillText(FillTextTaskMetadata metadata, string textData, int keyDelayMs,
-        int pastedDelayMs)
+    private static async Task<bool> FillText(FillTextTaskMetadata metadata, string textData, int pasteDelayMs)
     {
         InnerLogger.Logger.Trace($"开始填充Text. textData: {textData}");
 
@@ -159,7 +168,7 @@ public class FillTextHelper
             return false;
         }
 
-        await WaitMills(metadata, pastedDelayMs);
+        await WaitMills(metadata, pasteDelayMs);
 
         if (!KeyboardSimulator.Send(KeyboardSimulator.Paste))
         {
@@ -220,6 +229,8 @@ public class FillTextHelper
     {
         var values = lineTextList.Select(lineText => new FillTextLineItem
         {
+            LineBeforeFillDelay = 0,
+            LineAfterFillDelay = settings.PasteDelayMs,
             ItemLeadingKeys = new List<string>(),
             NextFieldKeys = new List<string>(),
             ItemLastFieldKeys = new List<string>(),
@@ -232,8 +243,8 @@ public class FillTextHelper
     /// <summary>
     /// 把保存过的记录组装成一次填充任务。
     /// <para>
-    /// 开了「数据行配置模式」（<see cref="FillEntry.UseLineSettings"/>）时，每一段带上自己的按键；
-    /// 没开就都是空数组，执行时自动回落成主表那一套。
+    /// 开了「数据行配置模式」（<see cref="FillEntry.UseLineSettings"/>）时，每一段带上自己的延迟和按键；
+    /// 没开就都是空的，执行时自动回落成主表那一套。
     /// </para>
     /// </summary>
     public static FillTextItem ToFillTextItem(FillEntry entry, Settings settings)
@@ -244,6 +255,8 @@ public class FillTextHelper
         var values = lines.Select(line => new FillTextLineItem
         {
             TextData = line.Value,
+            LineBeforeFillDelay = LineBeforeFillDelay(useLineSettings, line.LineBeforeFillDelay),
+            LineAfterFillDelay = LineAfterFillDelay(useLineSettings, line.LineAfterFillDelay),
             ItemLeadingKeys = LineKeys(useLineSettings, line.LeadingKeys),
             NextFieldKeys = LineKeys(useLineSettings, line.NextFieldKeys),
             ItemLastFieldKeys = LineKeys(useLineSettings, line.LastFieldKeys),
@@ -258,6 +271,23 @@ public class FillTextHelper
     private static IReadOnlyList<string> LineKeys(bool useLineSettings, List<string> keys)
     {
         return useLineSettings && keys != null ? keys : new List<string>();
+    }
+
+    /// <summary>
+    /// 行上的填充前延迟：没开数据行配置模式、或者这一段没填，都是 0（不额外等）。
+    /// </summary>
+    private static int LineBeforeFillDelay(bool useLineSettings, int? delayMs)
+    {
+        return useLineSettings && delayMs.HasValue ? delayMs.Value : 0;
+    }
+
+    /// <summary>
+    /// 行上的填充后延迟：留空或者 0 都算「没单独设」，用主表 / 全局那份；
+    /// 没开数据行配置模式时同样一律走主表。
+    /// </summary>
+    private static int LineAfterFillDelay(bool useLineSettings, int? delayMs)
+    {
+        return useLineSettings && delayMs.HasValue ? delayMs.Value : 0;
     }
 
     private static FillTextItem BuildFillTextItem(Settings settings, IReadOnlyList<FillTextLineItem> values)
@@ -285,14 +315,16 @@ public class FillTextHelper
     /// 延迟：每段粘贴 40 毫秒，每次按键 40 毫秒
     /// 1. 等待 300 毫秒
     /// 2. 按 Ctrl+Home
-    /// 3. 粘贴「张三」
-    /// 4. 按 Tab
-    /// 5. 粘贴「13800138000」
-    /// 6. 按 Down
-    /// 7. 按 Down
-    /// 8. 粘贴「北京」
-    /// 9. 按 Ctrl+S
-    /// 10. 按 Enter
+    /// 3. 等待 100 毫秒
+    /// 4. 按 Ctrl+A
+    /// 5. 粘贴「张三」
+    /// 6. 按 Tab
+    /// 7. 粘贴「13800138000」
+    /// 8. 按 Down
+    /// 9. 按 Down
+    /// 10. 粘贴「北京」
+    /// 11. 按 Ctrl+S
+    /// 12. 按 Enter
     /// </code>
     /// </summary>
     public static string DescribeFlow(FillTextItem item)
@@ -316,18 +348,31 @@ public class FillTextHelper
         for (var i = 0; i < values.Count; i++)
         {
             var lineItem = values[i];
+            var level1Space = $"->行: {i + 1}.";
+            // 这一段自己的填充前延迟
+            if (lineItem.LineBeforeFillDelay > 0)
+            {
+                steps.Add($"{level1Space} 等待 {lineItem.LineBeforeFillDelay} 毫秒");
+            }
 
             // 开始前按键只认第一段的，这里和执行那边保持一致
             if (i == 0)
             {
-                AddSendSteps(steps, lineItem.ItemLeadingKeys);
+                AddSendSteps(steps, lineItem.ItemLeadingKeys, level1Space);
             }
 
-            steps.Add($"粘贴「{Shorten(lineItem.TextData)}」");
+            // 这一段自己的填充后延迟，和主表不一样时才写出来（一样的话开头那行已经说过）
+            var paste = $"{level1Space} 粘贴「{Shorten(lineItem.TextData)}」";
+            if (lineItem.LineAfterFillDelay != item.PasteDelayMs)
+            {
+                paste += $"{level1Space} (先等 {lineItem.LineAfterFillDelay} 毫秒)";
+            }
+
+            steps.Add(paste);
 
             if (i == values.Count - 1)
             {
-                AddSendSteps(steps, lineItem.ItemLastFieldKeys);
+                AddSendSteps(steps, lineItem.ItemLastFieldKeys, level1Space);
             }
             else
             {
@@ -337,7 +382,7 @@ public class FillTextHelper
                     nextFieldKeys = item.NextFieldKeys;
                 }
 
-                AddSendSteps(steps, nextFieldKeys);
+                AddSendSteps(steps, nextFieldKeys, level1Space);
             }
         }
 
@@ -356,7 +401,7 @@ public class FillTextHelper
     /// 按键一个组合一步，和 <see cref="SendKeys"/> 里挨个发出去是对应的。
     /// 写法有问题的会显示成 <c>⚠ ...</c>，正好在流程里就能看出是哪一步。
     /// </summary>
-    private static void AddSendSteps(List<string> steps, IReadOnlyList<string> keys)
+    private static void AddSendSteps(List<string> steps, IReadOnlyList<string> keys, string levelSpace = "")
     {
         if (keys == null)
         {
@@ -370,13 +415,13 @@ public class FillTextHelper
                 continue;
             }
 
-            steps.Add("按 " + KeyParser.Describe(new[] { key }));
+            steps.Add(levelSpace + "按 " + KeyParser.Describe(new[] { key }));
         }
     }
 
     /// <summary>
     /// 两个反复出现的延迟放在开头说一次，不然每一步后面都缀一句没法看。
-    /// 开始前等待本身就是一个步骤，所以不在这里。
+    /// 开始前等待本身就是一个步骤；行上的粘贴后等待和主表不一样时写在那个粘贴步骤上，所以都不在这里。
     /// </summary>
     private static string DescribeDelays(FillTextItem item)
     {

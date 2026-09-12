@@ -10,11 +10,28 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
     /// 开始前按键接在主表的后面、粘贴后按键非空时覆盖主表的「切换输入框」、
     /// 最后一段之后按键排在主表的前面。顺序见 <c>FillTextHelper.DoStartFillTextAsync</c>。
     /// </para>
+    /// <para>
+    /// 两个延迟（<see cref="LineBeforeFillDelay"/> / <see cref="LineAfterFillDelay"/>）是这一段自己的填充前后各等多久，
+    /// 和主表那三个延迟（开始前等待 / 粘贴后等待 / 按键间隔）不是一回事，回落规则也不一样。
+    /// </para>
     /// </summary>
     public sealed class FillEntryLine
     {
         /// <summary>这一段要粘贴的内容。</summary>
         public string Value { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 行上的填充前延迟（毫秒）：这一段开始之前先等多久，也就是这一段的按键发出去之前。
+        /// 每一段都会等自己这一份，留空的按 0 算（不额外等）。
+        /// 和主表的「开始前等待」不是一回事：那个整批只等一次，在发第一个按键之前。
+        /// </summary>
+        public int? LineBeforeFillDelay { get; set; } = null;
+
+        /// <summary>
+        /// 行上的填充后延迟（毫秒）：这一段粘贴（Ctrl+V）之后、发后面的按键之前等多久。
+        /// **留空或者 0 都算没单独设**，用主表（自定义配置，或者没勾时的全局配置）的「粘贴后等待」。
+        /// </summary>
+        public int? LineAfterFillDelay { get; set; } = null;
 
         /// <summary>
         /// 这一段粘贴之前发送的按键，接在主表的「开始前按键」后面。
@@ -40,6 +57,8 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             return new FillEntryLine
             {
                 Value = Value,
+                LineBeforeFillDelay = LineBeforeFillDelay,
+                LineAfterFillDelay = LineAfterFillDelay,
                 LeadingKeys = CopyKeys(LeadingKeys),
                 NextFieldKeys = CopyKeys(NextFieldKeys),
                 LastFieldKeys = CopyKeys(LastFieldKeys),

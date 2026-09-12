@@ -33,13 +33,15 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                                      );
 
                                      CREATE TABLE IF NOT EXISTS FillEntryLines (
-                                         Id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                                         EntryId       INTEGER NOT NULL REFERENCES FillEntries (Id) ON DELETE CASCADE,
-                                         Value         TEXT    NOT NULL,
-                                         LeadingKeys   TEXT    NOT NULL DEFAULT '',
-                                         NextFieldKeys TEXT    NOT NULL DEFAULT '',
-                                         LastFieldKeys TEXT    NOT NULL DEFAULT '',
-                                         SortOrder     INTEGER NOT NULL
+                                         Id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                                         EntryId             INTEGER NOT NULL REFERENCES FillEntries (Id) ON DELETE CASCADE,
+                                         Value               TEXT    NOT NULL,
+                                         LineBeforeFillDelay INTEGER NULL,
+                                         LineAfterFillDelay  INTEGER NULL,
+                                         LeadingKeys         TEXT    NOT NULL DEFAULT '',
+                                         NextFieldKeys       TEXT    NOT NULL DEFAULT '',
+                                         LastFieldKeys       TEXT    NOT NULL DEFAULT '',
+                                         SortOrder           INTEGER NOT NULL
                                      );
 
                                      CREATE INDEX IF NOT EXISTS IX_FillEntryLines_EntryId
@@ -59,20 +61,24 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             }),
             ("FillEntryLines", new[]
             {
-                "Id", "EntryId", "Value", "LeadingKeys", "NextFieldKeys", "LastFieldKeys", "SortOrder",
+                "Id", "EntryId", "Value", "LineBeforeFillDelay", "LineAfterFillDelay", "LeadingKeys",
+                "NextFieldKeys", "LastFieldKeys", "SortOrder",
             }),
         };
 
         /// <summary>
         /// 查记录时连行数据一起带出来，行按 <c>SortOrder</c> 排好序。
         /// <para>
-        /// 行上的三个按键列必须起别名：和主表的同名列重名的话，<c>GetOrdinal</c> 读到的是主表那一列。
+        /// 行上的按键列必须起别名：和主表的同名列重名的话，<c>GetOrdinal</c> 读到的是主表那一列。
+        /// 两个延迟列不用：从表列名是 <c>LineBeforeFillDelay</c> / <c>LineAfterFillDelay</c>，
+        /// 和主表那两个（<c>BeforeFillDelayMs</c> / <c>PasteDelayMs</c>）不重名。
         /// </para>
         /// </summary>
         private const string SelectEntries =
             "SELECT e.Id, e.Name, e.UseCustomSettings, e.UseLineSettings, e.LeadingKeys, e.NextFieldKeys, " +
             "e.LastFieldKeys, e.BeforeFillDelayMs, e.PasteDelayMs, e.KeyDelayMs, e.RestoreClipboard, " +
-            "l.Value, l.LeadingKeys AS LineLeadingKeys, l.NextFieldKeys AS LineNextFieldKeys, " +
+            "l.Value, l.LineBeforeFillDelay, l.LineAfterFillDelay, " +
+            "l.LeadingKeys AS LineLeadingKeys, l.NextFieldKeys AS LineNextFieldKeys, " +
             "l.LastFieldKeys AS LineLastFieldKeys " +
             "FROM FillEntries e LEFT JOIN FillEntryLines l ON l.EntryId = e.Id ";
 
@@ -85,7 +91,9 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         };
 
-        private readonly string _connectionString;        public FillEntryStore(string databasePath)
+        private readonly string _connectionString;
+
+        public FillEntryStore(string databasePath)
         {
             if (string.IsNullOrWhiteSpace(databasePath))
             {
@@ -310,12 +318,17 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             command.Transaction = transaction;
             command.CommandText =
                 """
-                INSERT INTO FillEntryLines (EntryId, Value, LeadingKeys, NextFieldKeys, LastFieldKeys, SortOrder)
-                VALUES (@entryId, @value, @leading, @next, @last, @sortOrder);
+                INSERT INTO FillEntryLines
+                    (EntryId, Value, LineBeforeFillDelay, LineAfterFillDelay, LeadingKeys, NextFieldKeys,
+                     LastFieldKeys, SortOrder)
+                VALUES (@entryId, @value, @lineBeforeFillDelay, @lineAfterFillDelay, @leading, @next, @last,
+                        @sortOrder);
                 """;
 
             var entryIdParameter = command.Parameters.Add("@entryId", SqliteType.Integer);
             var valueParameter = command.Parameters.Add("@value", SqliteType.Text);
+            var lineBeforeFillDelayParameter = command.Parameters.Add("@lineBeforeFillDelay", SqliteType.Integer);
+            var lineAfterFillDelayParameter = command.Parameters.Add("@lineAfterFillDelay", SqliteType.Integer);
             var leadingParameter = command.Parameters.Add("@leading", SqliteType.Text);
             var nextParameter = command.Parameters.Add("@next", SqliteType.Text);
             var lastParameter = command.Parameters.Add("@last", SqliteType.Text);
@@ -328,6 +341,8 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                 var line = lines[i] ?? new FillEntryLine();
 
                 valueParameter.Value = line.Value ?? string.Empty;
+                lineBeforeFillDelayParameter.Value = ToDbValue(line.LineBeforeFillDelay);
+                lineAfterFillDelayParameter.Value = ToDbValue(line.LineAfterFillDelay);
                 leadingParameter.Value = ToJsonArray(line.LeadingKeys) ?? "[]";
                 nextParameter.Value = ToJsonArray(line.NextFieldKeys) ?? "[]";
                 lastParameter.Value = ToJsonArray(line.LastFieldKeys) ?? "[]";
@@ -405,9 +420,6 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
         /// </remarks>
         private static List<FillEntry> ReadEntries(SqliteCommand command)
         {
-            var entries = new List<FillEntry>();
-            FillEntry current = null;
-
             using var reader = command.ExecuteReader();
 
             var idColumn = reader.GetOrdinal("Id");
@@ -422,9 +434,14 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             var keyDelayColumn = reader.GetOrdinal("KeyDelayMs");
             var restoreClipboardColumn = reader.GetOrdinal("RestoreClipboard");
             var valueColumn = reader.GetOrdinal("Value");
+            var lineBeforeFillDelayColumn = reader.GetOrdinal("LineBeforeFillDelay");
+            var lineAfterFillDelayColumn = reader.GetOrdinal("LineAfterFillDelay");
             var lineLeadingColumn = reader.GetOrdinal("LineLeadingKeys");
             var lineNextColumn = reader.GetOrdinal("LineNextFieldKeys");
             var lineLastColumn = reader.GetOrdinal("LineLastFieldKeys");
+            
+            var entries = new List<FillEntry>();
+            FillEntry current = null;
 
             while (reader.Read())
             {
@@ -456,6 +473,8 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                     current.Values.Add(new FillEntryLine
                     {
                         Value = reader.GetString(valueColumn),
+                        LineBeforeFillDelay = ReadNullableInt(reader, lineBeforeFillDelayColumn),
+                        LineAfterFillDelay = ReadNullableInt(reader, lineAfterFillDelayColumn),
                         LeadingKeys = ReadKeys(reader, lineLeadingColumn),
                         NextFieldKeys = ReadKeys(reader, lineNextColumn),
                         LastFieldKeys = ReadKeys(reader, lineLastColumn),

@@ -26,16 +26,39 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-
-        <!--  开始粘贴之前  -->
+        
+        
+        <!--  开始前等待时间  -->
         <TextBlock
             Grid.Row="0"
             Grid.Column="0"
             Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
             VerticalAlignment="Center"
-            Text="开始前先发送的按键" />
-        <StackPanel
+            Text="开始前等待(毫秒)" />
+        <TextBox
             Grid.Row="0"
+            Grid.Column="1"
+            Margin="{StaticResource SettingPanelItemTopBottomMargin}"
+            MinWidth="{StaticResource SettingPanelTextBoxMinWidth}"
+            Text="{Binding Settings.BeforeFillDelayMs}" />
+        <TextBlock
+            Grid.Row="0"
+            Grid.Column="2"
+            Margin="9,4.5,0,4.5"
+            VerticalAlignment="Center"
+            FontSize="12"
+            Foreground="{DynamicResource Color04B}"
+            Text="一开始先等这么久再发按键，给目标程序一点拿到焦点的时间" />
+        
+        <!--  开始前按键  -->
+        <TextBlock
+            Grid.Row="1"
+            Grid.Column="0"
+            Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
+            VerticalAlignment="Center"
+            Text="开始前按键" />
+        <StackPanel
+            Grid.Row="1"
             Grid.Column="1"
             Margin="{StaticResource SettingPanelItemTopBottomMargin}"
             Orientation="Horizontal">
@@ -52,7 +75,7 @@
                 ToolTip="弹出键盘图，敲键盘、点键帽都能录" />
         </StackPanel>
         <TextBlock
-            Grid.Row="0"
+            Grid.Row="1"
             Grid.Column="2"
             Margin="9,4.5,0,4.5"
             VerticalAlignment="Center"
@@ -60,15 +83,16 @@
             Foreground="{DynamicResource Color04B}"
             Text="{Binding LeadingKeys.Preview}" />
 
-        <!--  切换输入框  -->
+        
+        <!--  切换按键  -->
         <TextBlock
-            Grid.Row="1"
+            Grid.Row="2"
             Grid.Column="0"
             Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
             VerticalAlignment="Center"
-            Text="切换输入框的按键" />
+            Text="切换按键" />
         <StackPanel
-            Grid.Row="1"
+            Grid.Row="2"
             Grid.Column="1"
             Margin="{StaticResource SettingPanelItemTopBottomMargin}"
             Orientation="Horizontal">
@@ -85,7 +109,7 @@
                 ToolTip="弹出键盘图，敲键盘、点键帽都能录" />
         </StackPanel>
         <TextBlock
-            Grid.Row="1"
+            Grid.Row="2"
             Grid.Column="2"
             Margin="9,4.5,0,4.5"
             VerticalAlignment="Center"
@@ -93,15 +117,15 @@
             Foreground="{DynamicResource Color04B}"
             Text="{Binding NextFieldKeys.Preview}" />
 
-        <!--  最后一段之后  -->
+        <!--  结束后按键  -->
         <TextBlock
-            Grid.Row="2"
+            Grid.Row="3"
             Grid.Column="0"
             Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
             VerticalAlignment="Center"
-            Text="最后一段之后的按键" />
+            Text="结束后按键" />
         <StackPanel
-            Grid.Row="2"
+            Grid.Row="3"
             Grid.Column="1"
             Margin="{StaticResource SettingPanelItemTopBottomMargin}"
             Orientation="Horizontal">
@@ -118,7 +142,7 @@
                 ToolTip="弹出键盘图，敲键盘、点键帽都能录" />
         </StackPanel>
         <TextBlock
-            Grid.Row="2"
+            Grid.Row="3"
             Grid.Column="2"
             Margin="9,4.5,0,4.5"
             VerticalAlignment="Center"
@@ -126,35 +150,14 @@
             Foreground="{DynamicResource Color04B}"
             Text="{Binding LastFieldKeys.Preview}" />
 
-        <!--  开始前等待  -->
-        <TextBlock
-            Grid.Row="3"
-            Grid.Column="0"
-            Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
-            VerticalAlignment="Center"
-            Text="开始前等待（毫秒）" />
-        <TextBox
-            Grid.Row="3"
-            Grid.Column="1"
-            Margin="{StaticResource SettingPanelItemTopBottomMargin}"
-            MinWidth="{StaticResource SettingPanelTextBoxMinWidth}"
-            Text="{Binding Settings.BeforeFillDelayMs}" />
-        <TextBlock
-            Grid.Row="3"
-            Grid.Column="2"
-            Margin="9,4.5,0,4.5"
-            VerticalAlignment="Center"
-            FontSize="12"
-            Foreground="{DynamicResource Color04B}"
-            Text="一开始先等这么久再发按键，给目标程序一点拿到焦点的时间" />
-
-        <!--  粘贴后等待  -->
+        
+        <!--  填充后等待  -->
         <TextBlock
             Grid.Row="4"
             Grid.Column="0"
             Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
             VerticalAlignment="Center"
-            Text="粘贴后等待（毫秒）" />
+            Text="填充后等待(毫秒)" />
         <TextBox
             Grid.Row="4"
             Grid.Column="1"
@@ -176,7 +179,7 @@
             Grid.Column="0"
             Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
             VerticalAlignment="Center"
-            Text="按键间隔（毫秒）" />
+            Text="按键后等待(毫秒)" />
         <TextBox
             Grid.Row="5"
             Grid.Column="1"
