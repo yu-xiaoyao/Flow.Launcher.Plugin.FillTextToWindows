@@ -24,11 +24,11 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                                          UseCustomSettings INTEGER NOT NULL DEFAULT 0,
                                          UseLineSettings   INTEGER NOT NULL DEFAULT 0,
                                          LeadingKeys       TEXT    NOT NULL DEFAULT '',
-                                         NextFieldKeys     TEXT    NOT NULL DEFAULT '["Tab"]',
+                                         NextFieldKeys     TEXT    NOT NULL DEFAULT '',
                                          LastFieldKeys     TEXT    NOT NULL DEFAULT '',
-                                         PasteDelayMs      INTEGER NOT NULL DEFAULT 150,
-                                         KeyDelayMs        INTEGER NOT NULL DEFAULT 40,
-                                         RestoreClipboard  INTEGER NOT NULL DEFAULT 0
+                                         PasteDelayMs      INTEGER NULL,
+                                         KeyDelayMs        INTEGER NULL,
+                                         RestoreClipboard  INTEGER NULL
                                      );
 
                                      CREATE TABLE IF NOT EXISTS FillEntryLines (
@@ -46,14 +46,20 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                                      """;
 
         /// <summary>
-        /// 后加的数据行列，老库的 <c>FillEntryLines</c> 里没有，启动时靠 <see cref="EnsureColumn"/> 补上。
+        /// 现在的表结构里必须有的列。已经建出来的表少了任何一列就整个删掉重建 —— 不做数据迁移，
+        /// 结构改过之后把记录重新录一遍就行。
         /// </summary>
-        private static readonly (string Table, string Column, string Definition)[] AddedColumns =
+        private static readonly (string Table, string[] Columns)[] RequiredColumns =
         {
-            ("FillEntries", "UseLineSettings", "INTEGER NOT NULL DEFAULT 0"),
-            ("FillEntryLines", "LeadingKeys", "TEXT NOT NULL DEFAULT ''"),
-            ("FillEntryLines", "NextFieldKeys", "TEXT NOT NULL DEFAULT ''"),
-            ("FillEntryLines", "LastFieldKeys", "TEXT NOT NULL DEFAULT ''"),
+            ("FillEntries", new[]
+            {
+                "Id", "Name", "UseCustomSettings", "UseLineSettings", "LeadingKeys", "NextFieldKeys",
+                "LastFieldKeys", "PasteDelayMs", "KeyDelayMs", "RestoreClipboard",
+            }),
+            ("FillEntryLines", new[]
+            {
+                "Id", "EntryId", "Value", "LeadingKeys", "NextFieldKeys", "LastFieldKeys", "SortOrder",
+            }),
         };
 
         /// <summary>
@@ -99,8 +105,8 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
         /// 建库建表，可以重复调用。
         /// </summary>
         /// <remarks>
-        /// 老版本把多段数据以 JSON 挤在 <c>FillEntries.ValuesJson</c> 一列里。结构不一样了就直接重建，
-        /// 不做数据迁移。
+        /// 不做数据迁移：表已经在了但结构对不上现在的定义（老版本存的列不一样），
+        /// 就把两张表删掉重建，记录重新录一遍。
         /// </remarks>
         public void EnsureCreated()
         {
@@ -112,7 +118,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
 
             using var connection = Open();
 
-            if (HasLegacyValuesColumn(connection))
+            if (NeedsRebuild(connection))
             {
                 // 先删从表，主表被外键引用着，顺序反了会删不掉
                 Execute(connection, "DROP TABLE IF EXISTS FillEntryLines;");
@@ -120,13 +126,6 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             }
 
             Execute(connection, DbDDL);
-
-            // 老库升级。CREATE TABLE IF NOT EXISTS 对已经存在的表什么都不做，
-            // 新加的列得自己补上，不然读的时候 GetOrdinal 会直接抛。
-            foreach (var (table, column, definition) in AddedColumns)
-            {
-                EnsureColumn(connection, table, column, definition);
-            }
         }
 
         /// <summary>
@@ -176,8 +175,6 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                 throw new ArgumentNullException(nameof(entry));
             }
 
-            var custom = entry.CustomSettings ?? new Settings();
-
             using var connection = Open();
             using var transaction = connection.BeginTransaction();
 
@@ -189,12 +186,14 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                 command.Parameters.AddWithValue("@name", entry.Name ?? string.Empty);
                 command.Parameters.AddWithValue("@useCustom", entry.UseCustomSettings ? 1 : 0);
                 command.Parameters.AddWithValue("@useLine", entry.UseLineSettings ? 1 : 0);
-                command.Parameters.AddWithValue("@leading", ToJsonArray(custom.LeadingKeys));
-                command.Parameters.AddWithValue("@next", ToJsonArray(custom.NextFieldKeys));
-                command.Parameters.AddWithValue("@last", ToJsonArray(custom.LastFieldKeys));
-                command.Parameters.AddWithValue("@pasteDelay", custom.PasteDelayMs);
-                command.Parameters.AddWithValue("@keyDelay", custom.KeyDelayMs);
-                command.Parameters.AddWithValue("@restoreClipboard", custom.RestoreClipboard ? 1 : 0);
+                command.Parameters.AddWithValue("@leading", ToJsonArray(entry.LeadingKeys) ?? "[]");
+                command.Parameters.AddWithValue("@next", ToJsonArray(entry.NextFieldKeys) ?? "[]");
+                command.Parameters.AddWithValue("@last", ToJsonArray(entry.LastFieldKeys) ?? "[]");
+
+                // 留空的项存成 SQL 的 NULL，读出来就意味着「跟着全局设置走」
+                command.Parameters.AddWithValue("@pasteDelay", ToDbValue(entry.PasteDelayMs));
+                command.Parameters.AddWithValue("@keyDelay", ToDbValue(entry.KeyDelayMs));
+                command.Parameters.AddWithValue("@restoreClipboard", ToDbValue(entry.RestoreClipboard));
 
                 if (entry.Id > 0)
                 {
@@ -335,6 +334,19 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
         }
 
         /// <summary>
+        /// 可空值写进 SQLite：null 写成 SQL 的 NULL，读出来才知道这一项「没设过，跟着全局走」。
+        /// </summary>
+        private static object ToDbValue(int? value)
+        {
+            return value.HasValue ? value.Value : DBNull.Value;
+        }
+
+        private static object ToDbValue(bool? value)
+        {
+            return value.HasValue ? (value.Value ? 1 : 0) : DBNull.Value;
+        }
+
+        /// <summary>
         /// 按键配置存成 JSON 数组，例如 <c>["Tab"]</c>、<c>["Ctrl+A", "Delete"]</c>。
         /// </summary>
         /// <remarks>
@@ -422,15 +434,12 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                         Name = reader.GetString(nameColumn),
                         UseCustomSettings = reader.GetInt64(useCustomColumn) != 0,
                         UseLineSettings = reader.GetInt64(useLineColumn) != 0,
-                        CustomSettings = new Settings
-                        {
-                            LeadingKeys = ReadKeys(reader, leadingColumn),
-                            NextFieldKeys = ReadKeys(reader, nextColumn),
-                            LastFieldKeys = ReadKeys(reader, lastColumn),
-                            PasteDelayMs = (int)reader.GetInt64(pasteDelayColumn),
-                            KeyDelayMs = (int)reader.GetInt64(keyDelayColumn),
-                            RestoreClipboard = reader.GetInt64(restoreClipboardColumn) != 0,
-                        },
+                        LeadingKeys = ReadKeys(reader, leadingColumn),
+                        NextFieldKeys = ReadKeys(reader, nextColumn),
+                        LastFieldKeys = ReadKeys(reader, lastColumn),
+                        PasteDelayMs = ReadNullableInt(reader, pasteDelayColumn),
+                        KeyDelayMs = ReadNullableInt(reader, keyDelayColumn),
+                        RestoreClipboard = ReadNullableBool(reader, restoreClipboardColumn),
                     };
 
                     entries.Add(current);
@@ -458,36 +467,68 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
         }
 
         /// <summary>
-        /// 表里没有这一列就加上。加列的时候 SQLite 要求 <c>NOT NULL</c> 必须带默认值，
-        /// <see cref="AddedColumns"/> 里那几条定义都给了，所以直接 ALTER 就行。
+        /// 可空列的读取。NULL 原样返回 null，表示这一项没设过、跟着全局设置走。
         /// </summary>
-        private static void EnsureColumn(SqliteConnection connection, string table, string column, string definition)
+        private static int? ReadNullableInt(SqliteDataReader reader, int column)
         {
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText =
-                    $"SELECT COUNT(*) FROM pragma_table_info('{table}') WHERE name = @column;";
-                command.Parameters.AddWithValue("@column", column);
+            return reader.IsDBNull(column) ? null : (int)reader.GetInt64(column);
+        }
 
-                if (Convert.ToInt64(command.ExecuteScalar()) > 0)
-                {
-                    return;
-                }
-            }
-
-            Execute(connection, $"ALTER TABLE {table} ADD COLUMN {column} {definition};");
+        private static bool? ReadNullableBool(SqliteDataReader reader, int column)
+        {
+            return reader.IsDBNull(column) ? null : reader.GetInt64(column) != 0;
         }
 
         /// <summary>
-        /// 老版本把多段数据以 JSON 存在 FillEntries.ValuesJson 里，靠这一列判断要不要重建表。
+        /// 表已经建出来了，但少了几列（老版本的表结构）—— 这种库整个丢掉重建。
+        /// <para>
+        /// 表还没建出来的不算：接着跑 <see cref="DbDDL"/> 就照新的结构建好了。
+        /// </para>
         /// </summary>
-        private static bool HasLegacyValuesColumn(SqliteConnection connection)
+        private static bool NeedsRebuild(SqliteConnection connection)
+        {
+            foreach (var (table, columns) in RequiredColumns)
+            {
+                if (!TableExists(connection, table))
+                {
+                    continue;
+                }
+
+                foreach (var column in columns)
+                {
+                    if (!HasColumn(connection, table, column))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static bool TableExists(SqliteConnection connection, string table)
+        {
+            return Convert.ToInt64(Scalar(
+                connection,
+                $"SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = '{table}';")) > 0;
+        }
+
+        private static bool HasColumn(SqliteConnection connection, string table, string column)
+        {
+            return Convert.ToInt64(Scalar(
+                connection,
+                $"SELECT COUNT(*) FROM pragma_table_info('{table}') WHERE name = '{column}';")) > 0;
+        }
+
+        /// <summary>
+        /// 表名和列名都是代码里写死的常量，不是用户输入，直接拼进 SQL 没关系。
+        /// </summary>
+        private static object Scalar(SqliteConnection connection, string sql)
         {
             using var command = connection.CreateCommand();
-            command.CommandText =
-                "SELECT COUNT(*) FROM pragma_table_info('FillEntries') WHERE name = 'ValuesJson';";
+            command.CommandText = sql;
 
-            return Convert.ToInt64(command.ExecuteScalar()) > 0;
+            return command.ExecuteScalar();
         }
 
         /// <summary>

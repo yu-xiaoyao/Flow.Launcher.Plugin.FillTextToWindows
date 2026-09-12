@@ -103,24 +103,6 @@ namespace Flow.Launcher.Plugin.FillTextToWindows
         }
 
         /// <summary>
-        /// 把另一份配置的 6 个字段拷进来，用于「自定义配置」的初始值。
-        /// </summary>
-        public void CopyFrom(Settings other)
-        {
-            if (other == null)
-            {
-                return;
-            }
-
-            LeadingKeys = other.LeadingKeys;
-            NextFieldKeys = other.NextFieldKeys;
-            LastFieldKeys = other.LastFieldKeys;
-            PasteDelayMs = other.PasteDelayMs;
-            KeyDelayMs = other.KeyDelayMs;
-            RestoreClipboard = other.RestoreClipboard;
-        }
-
-        /// <summary>
         /// 按键配置统一在这里兜底：配置里存的可能是 null（手改过 JSON），一律当成空数组，
         /// 顺便复制一份，免得两个 Settings 共用同一个 List。
         /// </summary>

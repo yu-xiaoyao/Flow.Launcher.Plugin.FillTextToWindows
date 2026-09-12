@@ -22,13 +22,26 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
 
         private long _entryId;
 
+        /// <summary>「跟全局走」那几行灰字要显示当前全局值，载入的时候记一份。</summary>
+        private Settings _globalSettings = new();
+
+        private List<string> _leadingKeys = new();
+
+        private List<string> _nextFieldKeys = new();
+
+        private List<string> _lastFieldKeys = new();
+
+        private string _pasteDelayText = string.Empty;
+
+        private string _keyDelayText = string.Empty;
+
+        private bool? _restoreClipboard;
+
         public EntryDraft()
         {
-            CustomSettings = new Settings();
-
-            LeadingKeys = new KeyListEditor(CustomSettings.LeadingKeys, keys => CustomSettings.LeadingKeys = keys);
-            NextFieldKeys = new KeyListEditor(CustomSettings.NextFieldKeys, keys => CustomSettings.NextFieldKeys = keys);
-            LastFieldKeys = new KeyListEditor(CustomSettings.LastFieldKeys, keys => CustomSettings.LastFieldKeys = keys);
+            LeadingKeys = new KeyListEditor(_leadingKeys, keys => _leadingKeys = keys);
+            NextFieldKeys = new KeyListEditor(_nextFieldKeys, keys => _nextFieldKeys = keys);
+            LastFieldKeys = new KeyListEditor(_lastFieldKeys, keys => _lastFieldKeys = keys);
 
             Values.CollectionChanged += OnValuesCollectionChanged;
         }
@@ -39,10 +52,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
         /// </summary>
         public ObservableCollection<ValueItem> Values { get; } = new();
 
-        /// <summary>自定义配置，字段和插件全局配置一模一样。</summary>
-        public Settings CustomSettings { get; }
-
-        /// <summary>「开始前按键」编辑框，写回去的是 <see cref="CustomSettings"/> 上的字段。</summary>
+        /// <summary>「开始前按键」编辑框，写回本条记录自己的按键。</summary>
         public KeyListEditor LeadingKeys { get; }
 
         /// <summary>「切换输入框」编辑框。</summary>
@@ -72,6 +82,68 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
             set => SetField(ref _useLineSettings, value);
         }
 
+        /// <summary>
+        /// 「粘贴后等待」输入框里的原文。留空（或者写了不是数字的东西）就是 null，跟着全局设置走。
+        /// <para>
+        /// 存原文而不是直接存 int?：输入框绑可空数字的话，清空时 WPF 不会写出 null，
+        /// 而是保留旧值，看上去像「清掉了」，实际还生效。
+        /// </para>
+        /// </summary>
+        public string PasteDelayText
+        {
+            get => _pasteDelayText;
+            set
+            {
+                if (SetField(ref _pasteDelayText, value ?? string.Empty))
+                {
+                    Raise(nameof(PasteDelayHint));
+                }
+            }
+        }
+
+        /// <summary>「按键间隔」输入框里的原文，留空就是跟着全局设置走。</summary>
+        public string KeyDelayText
+        {
+            get => _keyDelayText;
+            set
+            {
+                if (SetField(ref _keyDelayText, value ?? string.Empty))
+                {
+                    Raise(nameof(KeyDelayHint));
+                }
+            }
+        }
+
+        /// <summary>
+        /// 「还原剪贴板」。三态：勾上还原、空着不还原、半选跟着全局设置走。
+        /// </summary>
+        public bool? RestoreClipboard
+        {
+            get => _restoreClipboard;
+            set
+            {
+                if (SetField(ref _restoreClipboard, value))
+                {
+                    Raise(nameof(RestoreClipboardHint));
+                }
+            }
+        }
+
+        /// <summary>这一项填了具体值就什么也不提示；留空、或者写的不是数字，才说明实际会用哪个值。</summary>
+        public string PasteDelayHint => DelayHint(_pasteDelayText, _globalSettings.PasteDelayMs);
+
+        public string KeyDelayHint => DelayHint(_keyDelayText, _globalSettings.KeyDelayMs);
+
+        public string RestoreClipboardHint => RestoreClipboard.HasValue
+            ? string.Empty
+            : "跟全局走（当前" + (_globalSettings.RestoreClipboard ? "还原" : "不还原") + "）";
+
+        /// <summary>「粘贴后等待」解析出来的值，null 表示跟着全局走。</summary>
+        public int? PasteDelayMs => ParseDelay(_pasteDelayText);
+
+        /// <summary>「按键间隔」解析出来的值，null 表示跟着全局走。</summary>
+        public int? KeyDelayMs => ParseDelay(_keyDelayText);
+
         public string SegmentSummary
         {
             get
@@ -100,12 +172,15 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
         /// 把一条记录装进表单。<paramref name="entry"/> 为 null 表示新建。
         /// </summary>
         /// <remarks>
-        /// 自定义配置那 6 个字段总是有值：记录自己带自定义配置就用它的，
-        /// 否则先用全局配置填上，这样用户勾上「自定义配置」时是从当前全局值开始改，而不是从空白开始。
-        /// 数据行上的按键没这回事，新建时就是空的，空着的那一段自动用主表的配置。
+        /// 三个按键总是有值：记录自己带就用它的，没勾「自定义按键」或者新建时先用全局按键填上，
+        /// 这样用户勾上之后是从当前全局值开始改，而不是从空白开始。
+        /// 「粘贴后等待 / 按键间隔 / 还原剪贴板」没这回事：没存过就留空，表示跟着全局设置走。
+        /// 数据行上的按键也留空，空着的那一段自动用主表的配置。
         /// </remarks>
         public void LoadFrom(FillEntry entry, Settings globalSettings)
         {
+            _globalSettings = globalSettings ?? new Settings();
+
             _entryId = entry?.Id ?? 0;
             Name = entry?.Name ?? string.Empty;
             UseCustomSettings = entry?.UseCustomSettings ?? false;
@@ -126,12 +201,26 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
                 }
             }
 
-            CustomSettings.CopyFrom(entry is { UseCustomSettings: true } ? entry.CustomSettings : globalSettings);
+            // 没勾「自定义按键」的记录，编辑框里摆当前的全局按键：勾选框是灰的，看得见但改不了
+            var useCustom = entry is { UseCustomSettings: true };
 
-            // 配置整体换过了，三个编辑框跟着重新读一遍
-            LeadingKeys.Load(CustomSettings.LeadingKeys);
-            NextFieldKeys.Load(CustomSettings.NextFieldKeys);
-            LastFieldKeys.Load(CustomSettings.LastFieldKeys);
+            _leadingKeys = FillEntry.CopyKeys(useCustom ? entry.LeadingKeys : globalSettings.LeadingKeys);
+            _nextFieldKeys = FillEntry.CopyKeys(useCustom ? entry.NextFieldKeys : globalSettings.NextFieldKeys);
+            _lastFieldKeys = FillEntry.CopyKeys(useCustom ? entry.LastFieldKeys : globalSettings.LastFieldKeys);
+
+            LeadingKeys.Load(_leadingKeys);
+            NextFieldKeys.Load(_nextFieldKeys);
+            LastFieldKeys.Load(_lastFieldKeys);
+
+            // 这三个留空就是跟着全局走，所以没存过的记录摆空框，旁边灰字显示会跟到哪个值
+            PasteDelayText = entry?.PasteDelayMs?.ToString() ?? string.Empty;
+            KeyDelayText = entry?.KeyDelayMs?.ToString() ?? string.Empty;
+            RestoreClipboard = entry?.RestoreClipboard;
+
+            // 全局值换过的话提示文字也得跟着变，哪怕输入框里的原文一个字没动
+            Raise(nameof(PasteDelayHint));
+            Raise(nameof(KeyDelayHint));
+            Raise(nameof(RestoreClipboardHint));
         }
 
         /// <summary>
@@ -174,8 +263,13 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
                 Name = (Name ?? string.Empty).Trim(),
                 Values = ParseLines(),
                 UseCustomSettings = UseCustomSettings,
-                CustomSettings = CustomSettings.Clone(),
+                LeadingKeys = FillEntry.CopyKeys(_leadingKeys),
+                NextFieldKeys = FillEntry.CopyKeys(_nextFieldKeys),
+                LastFieldKeys = FillEntry.CopyKeys(_lastFieldKeys),
                 UseLineSettings = UseLineSettings,
+                PasteDelayMs = PasteDelayMs,
+                KeyDelayMs = KeyDelayMs,
+                RestoreClipboard = RestoreClipboard,
             };
         }
 
@@ -216,18 +310,57 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
                 return string.IsNullOrWhiteSpace(Name)
                     && Values.All(item => string.IsNullOrWhiteSpace(item.Text))
                     && !UseCustomSettings
-                    && !UseLineSettings;
+                    && !UseLineSettings
+                    && PasteDelayMs == null
+                    && KeyDelayMs == null
+                    && RestoreClipboard == null;
             }
 
             if (!string.Equals(Name ?? string.Empty, entry.Name ?? string.Empty, StringComparison.Ordinal)
                 || !LinesEqual(ParseLines(), entry.Values)
                 || UseCustomSettings != entry.UseCustomSettings
-                || UseLineSettings != entry.UseLineSettings)
+                || UseLineSettings != entry.UseLineSettings
+                || PasteDelayMs != entry.PasteDelayMs
+                || KeyDelayMs != entry.KeyDelayMs
+                || RestoreClipboard != entry.RestoreClipboard)
             {
                 return false;
             }
 
-            return !UseCustomSettings || SettingsEqual(CustomSettings, entry.CustomSettings);
+            // 没勾「自定义按键」时三个框里摆的是全局按键的副本，改了也不生效，不用算进「改过没」
+            return !UseCustomSettings
+                   || (KeysEqual(_leadingKeys, entry.LeadingKeys)
+                       && KeysEqual(_nextFieldKeys, entry.NextFieldKeys)
+                       && KeysEqual(_lastFieldKeys, entry.LastFieldKeys));
+        }
+
+        /// <summary>
+        /// 解析延迟输入框：空着、或者写的不是数字，都当成「跟着全局设置走」。
+        /// </summary>
+        private static int? ParseDelay(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return null;
+            }
+
+            return int.TryParse(text.Trim(), out var value) ? value : null;
+        }
+
+        /// <summary>
+        /// 延迟输入框下面的灰字。填了具体值就不提示；留空说明会跟到哪个值，
+        /// 写的不是数字则提醒一句 —— 那种情况也按留空算，不说的话用户会以为自己的值生效了。
+        /// </summary>
+        private static string DelayHint(string text, int globalValue)
+        {
+            if (int.TryParse((text ?? string.Empty).Trim(), out _))
+            {
+                return string.Empty;
+            }
+
+            var follow = $"跟全局走（当前 {globalValue}）";
+
+            return string.IsNullOrWhiteSpace(text) ? follow : "⚠ 只能填数字，" + follow;
         }
 
         /// <summary>
@@ -257,21 +390,6 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
             }
 
             return true;
-        }
-
-        private static bool SettingsEqual(Settings left, Settings right)
-        {
-            if (right == null)
-            {
-                return false;
-            }
-
-            return KeysEqual(left.LeadingKeys, right.LeadingKeys)
-                && KeysEqual(left.NextFieldKeys, right.NextFieldKeys)
-                && KeysEqual(left.LastFieldKeys, right.LastFieldKeys)
-                && left.PasteDelayMs == right.PasteDelayMs
-                && left.KeyDelayMs == right.KeyDelayMs
-                && left.RestoreClipboard == right.RestoreClipboard;
         }
 
         private static bool KeysEqual(IReadOnlyList<string> left, IReadOnlyList<string> right)

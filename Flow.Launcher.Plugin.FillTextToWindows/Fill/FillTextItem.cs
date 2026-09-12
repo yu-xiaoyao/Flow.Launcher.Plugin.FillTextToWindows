@@ -48,4 +48,10 @@ public class FillTextItem
     /// 粘贴数据行
     /// </summary>
     public IReadOnlyList<FillTextLineItem> Values { get; set; }
+    
+    /// <summary>
+    /// 粘贴后延迟
+    /// </summary>
+    public int LastFillDelayMs { get; set; }
+    
 }

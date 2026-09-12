@@ -230,7 +230,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows
             var subtitle = Preview(entry.Values.Select(line => line.Value))
                            + "   ·   "
                            + DescribeFlow(entry.ResolveSettings(_settings))
-                           + (entry.UseCustomSettings ? "   ·   自定义配置" : string.Empty)
+                           + (entry.UseCustomSettings ? "   ·   自定义按键" : string.Empty)
                            + (entry.UseLineSettings ? "   ·   每段独立按键" : string.Empty);
 
             return new Result

@@ -268,7 +268,7 @@
 
                     <CheckBox
                         Margin="0,16,0,0"
-                        Content="自定义配置（不勾选时这条记录直接用插件的全局配置）"
+                        Content="自定义按键（不勾选时这三个按键走插件的全局配置）"
                         IsChecked="{Binding Draft.UseCustomSettings}" />
 
                     <Grid Margin="0,8,0,0" IsEnabled="{Binding Draft.UseCustomSettings}">
@@ -278,9 +278,6 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
@@ -388,13 +385,31 @@
                             Foreground="#FF6B6B6B"
                             Text="{Binding Draft.LastFieldKeys.Preview}" />
 
+                    </Grid>
+
+                    <!--
+                        这三个不跟着「自定义按键」的开关变灰：它们本来就是一项一项独立覆盖的，
+                        留空就跟着全局设置走，所以不必先把整条记录切成自定义模式。
+                    -->
+                    <Grid Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" MinWidth="86" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
                         <TextBlock
-                            Grid.Row="3"
+                            Grid.Row="0"
                             Grid.Column="0"
                             Margin="0,0,10,4"
                             VerticalAlignment="Center"
                             Text="粘贴后等待" />
-                        <DockPanel Grid.Row="3" Grid.Column="1" Margin="0,0,0,4">
+                        <DockPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,4">
                             <TextBlock
                                 DockPanel.Dock="Right"
                                 Margin="6,0,0,0"
@@ -402,16 +417,28 @@
                                 FontSize="12"
                                 Foreground="#FF6B6B6B"
                                 Text="毫秒" />
-                            <TextBox Padding="4,3" Text="{Binding Draft.CustomSettings.PasteDelayMs}" />
+                            <TextBox
+                                MinWidth="150"
+                                Padding="4,3"
+                                Text="{Binding Draft.PasteDelayText, UpdateSourceTrigger=PropertyChanged}"
+                                ToolTip="留空就是跟着全局设置走" />
                         </DockPanel>
+                        <TextBlock
+                            Grid.Row="0"
+                            Grid.Column="2"
+                            Margin="10,0,0,4"
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            Foreground="#FF6B6B6B"
+                            Text="{Binding Draft.PasteDelayHint}" />
 
                         <TextBlock
-                            Grid.Row="4"
+                            Grid.Row="1"
                             Grid.Column="0"
                             Margin="0,0,10,4"
                             VerticalAlignment="Center"
                             Text="按键间隔" />
-                        <DockPanel Grid.Row="4" Grid.Column="1" Margin="0,0,0,4">
+                        <DockPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,4">
                             <TextBlock
                                 DockPanel.Dock="Right"
                                 Margin="6,0,0,0"
@@ -419,16 +446,38 @@
                                 FontSize="12"
                                 Foreground="#FF6B6B6B"
                                 Text="毫秒" />
-                            <TextBox Padding="4,3" Text="{Binding Draft.CustomSettings.KeyDelayMs}" />
+                            <TextBox
+                                MinWidth="150"
+                                Padding="4,3"
+                                Text="{Binding Draft.KeyDelayText, UpdateSourceTrigger=PropertyChanged}"
+                                ToolTip="留空就是跟着全局设置走" />
                         </DockPanel>
+                        <TextBlock
+                            Grid.Row="1"
+                            Grid.Column="2"
+                            Margin="10,0,0,4"
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            Foreground="#FF6B6B6B"
+                            Text="{Binding Draft.KeyDelayHint}" />
 
                         <CheckBox
-                            Grid.Row="5"
+                            Grid.Row="2"
                             Grid.Column="1"
-                            Grid.ColumnSpan="2"
                             Margin="0,4,0,0"
+                            VerticalAlignment="Center"
                             Content="填充完成后把剪贴板还原成原来的内容"
-                            IsChecked="{Binding Draft.CustomSettings.RestoreClipboard}" />
+                            IsChecked="{Binding Draft.RestoreClipboard}"
+                            IsThreeState="True"
+                            ToolTip="半选（灰底方框）= 跟着全局设置走" />
+                        <TextBlock
+                            Grid.Row="2"
+                            Grid.Column="2"
+                            Margin="10,4,0,0"
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            Foreground="#FF6B6B6B"
+                            Text="{Binding Draft.RestoreClipboardHint}" />
                     </Grid>
 
                     <StackPanel

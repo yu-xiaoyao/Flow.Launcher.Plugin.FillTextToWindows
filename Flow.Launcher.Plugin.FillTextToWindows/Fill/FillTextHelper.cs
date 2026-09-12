@@ -141,7 +141,10 @@ public class FillTextHelper
         }
         // end loop
 
-        await SendKeys(metadata, item.LastFieldKeys, keyDelayMs);
+        success = await SendKeys(metadata, item.LastFieldKeys, keyDelayMs);
+        if (!success) return;
+
+        await WaitMills(metadata, item.LastFillDelayMs);
     }
 
     private static async Task<bool> FillText(FillTextTaskMetadata metadata, string textData, int keyDelayMs,

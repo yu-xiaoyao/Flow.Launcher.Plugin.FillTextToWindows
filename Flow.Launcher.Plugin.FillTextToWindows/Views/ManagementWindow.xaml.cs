@@ -55,8 +55,8 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Views
             }
         }
 
-        // 这三个按钮在「自定义配置」那个总开关的 IsEnabled 里，不勾选时点不到：
-        // 录进去的东西写在 CustomSettings 上，全局配置模式下会被忽略，也会被当成「没改过」丢掉。
+        // 上面这三个按钮在「自定义按键」那个总开关的 IsEnabled 里，不勾选时点不到：
+        // 录进去的按键写在本条记录上，没勾的时候会用全局按键，录了也没用，也会被当成「没改过」丢掉。
 
         private void OnRecordLeadingKeysClick(object sender, RoutedEventArgs e)
         {
