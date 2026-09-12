@@ -107,8 +107,7 @@
                                 Margin="0,0,0,6"
                                 Content="数据行配置模式（每一段配自己的延迟和按键，和下面的主表配置叠加）"
                                 IsChecked="{Binding Draft.UseLineSettings}"
-                                ToolTip="延迟每一段都有：按键前延迟（这一段的按键之前各等各的）、按键后延迟（留空或 0 就用主表的「粘贴后等待」）。按键只显示这一段会用到的：开始前只在第 1 段粘贴之前发一次；粘贴后填了会顶掉主表的「切换输入框」；最后之后排在主表的前面，只有最后一段用得上。"
-                                />
+                                ToolTip="延迟每一段都有：按键前延迟（这一段的按键之前各等各的）、按键后延迟（留空或 0 就用主表的「粘贴后等待」）。按键只显示这一段会用到的：开始前只在第 1 段粘贴之前发一次；粘贴后填了会顶掉主表的「切换输入框」；最后之后排在主表的前面，只有最后一段用得上。" />
                             <TextBlock
                                 Margin="0,0,0,8"
                                 FontSize="12"
@@ -166,7 +165,7 @@
                                                         VerticalAlignment="Center"
                                                         FontSize="12"
                                                         Foreground="#FF6B6B6B"
-                                                        Text="按键前延迟" />
+                                                        Text="填充前延迟" />
                                                     <TextBox
                                                         Width="56"
                                                         Padding="3,2"
@@ -187,13 +186,45 @@
                                                         Text="{Binding LineBeforeFillDelay.Error}" />
                                                 </StackPanel>
 
+                                                <StackPanel
+                                                    Margin="0,0,14,4"
+                                                    Orientation="Horizontal"
+                                                    Visibility="{Binding IsFirst, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock
+                                                        Margin="0,0,4,0"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="12"
+                                                        Foreground="#FF6B6B6B"
+                                                        Text="填充前按键" />
+                                                    <TextBox
+                                                        Width="88"
+                                                        Padding="3,2"
+                                                        FontSize="12"
+                                                        Text="{Binding LeadingKeys.Text, UpdateSourceTrigger=PropertyChanged}" />
+                                                    <Button
+                                                        Width="38"
+                                                        Margin="4,0,0,0"
+                                                        Padding="0,1"
+                                                        VerticalAlignment="Center"
+                                                        Click="OnRecordValueLeadingKeysClick"
+                                                        Content="录制"
+                                                        FontSize="11"
+                                                        ToolTip="弹出键盘图，敲键盘、点键帽都能录" />
+                                                    <TextBlock
+                                                        Margin="4,0,0,0"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="11"
+                                                        Foreground="#FFC0392B"
+                                                        Text="{Binding LeadingKeys.Error}" />
+                                                </StackPanel>
+
                                                 <StackPanel Margin="0,0,14,4" Orientation="Horizontal">
                                                     <TextBlock
                                                         Margin="0,0,4,0"
                                                         VerticalAlignment="Center"
                                                         FontSize="12"
                                                         Foreground="#FF6B6B6B"
-                                                        Text="按键后延迟" />
+                                                        Text="填充后延迟" />
                                                     <TextBox
                                                         Width="56"
                                                         Padding="3,2"
@@ -217,45 +248,13 @@
                                                 <StackPanel
                                                     Margin="0,0,14,4"
                                                     Orientation="Horizontal"
-                                                    Visibility="{Binding IsFirst, Converter={StaticResource BoolToVisibility}}">
-                                                    <TextBlock
-                                                        Margin="0,0,4,0"
-                                                        VerticalAlignment="Center"
-                                                        FontSize="12"
-                                                        Foreground="#FF6B6B6B"
-                                                        Text="开始前" />
-                                                    <TextBox
-                                                        Width="88"
-                                                        Padding="3,2"
-                                                        FontSize="12"
-                                                        Text="{Binding LeadingKeys.Text, UpdateSourceTrigger=PropertyChanged}" />
-                                                    <Button
-                                                        Width="38"
-                                                        Margin="4,0,0,0"
-                                                        Padding="0,1"
-                                                        VerticalAlignment="Center"
-                                                        Click="OnRecordValueLeadingKeysClick"
-                                                        Content="录制"
-                                                        FontSize="11"
-                                                        ToolTip="弹出键盘图，敲键盘、点键帽都能录" />
-                                                    <TextBlock
-                                                        Margin="4,0,0,0"
-                                                        VerticalAlignment="Center"
-                                                        FontSize="11"
-                                                        Foreground="#FFC0392B"
-                                                        Text="{Binding LeadingKeys.Error}" />
-                                                </StackPanel>
-
-                                                <StackPanel
-                                                    Margin="0,0,14,4"
-                                                    Orientation="Horizontal"
                                                     Visibility="{Binding IsLast, Converter={StaticResource NotBoolToVisibility}}">
                                                     <TextBlock
                                                         Margin="0,0,4,0"
                                                         VerticalAlignment="Center"
                                                         FontSize="12"
                                                         Foreground="#FF6B6B6B"
-                                                        Text="粘贴后" />
+                                                        Text="填充后按键" />
                                                     <TextBox
                                                         Width="88"
                                                         Padding="3,2"
@@ -287,7 +286,7 @@
                                                         VerticalAlignment="Center"
                                                         FontSize="12"
                                                         Foreground="#FF6B6B6B"
-                                                        Text="最后之后" />
+                                                        Text="结束后按键" />
                                                     <TextBox
                                                         Width="88"
                                                         Padding="3,2"

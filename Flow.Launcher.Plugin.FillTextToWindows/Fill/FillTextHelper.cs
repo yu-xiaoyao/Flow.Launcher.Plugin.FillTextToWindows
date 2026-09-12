@@ -134,6 +134,7 @@ public class FillTextHelper
             success = await WaitMills(metadata, lineItem.LineAfterFillDelay);
             if (!success) return;
 
+            // 填充后 发送按键
             var isLast = i == values.Count - 1;
             if (isLast)
             {
@@ -338,10 +339,10 @@ public class FillTextHelper
 
         if (item.BeforeFillDelayMs > 0)
         {
-            steps.Add($"等待 {item.BeforeFillDelayMs} 毫秒");
+            steps.Add($"开始前等待 {item.BeforeFillDelayMs} 毫秒");
         }
 
-        AddSendSteps(steps, item.LeadingKeys);
+        AddSendSteps(steps, item.LeadingKeys, "开始前按键 ");
 
         var values = item.Values ?? new List<FillTextLineItem>();
 
@@ -352,23 +353,24 @@ public class FillTextHelper
             // 这一段自己的填充前延迟
             if (lineItem.LineBeforeFillDelay > 0)
             {
-                steps.Add($"{level1Space} 等待 {lineItem.LineBeforeFillDelay} 毫秒");
+                steps.Add($"{level1Space} 开始前等待 {lineItem.LineBeforeFillDelay} 毫秒");
             }
 
             // 开始前按键只认第一段的，这里和执行那边保持一致
             if (i == 0)
             {
-                AddSendSteps(steps, lineItem.ItemLeadingKeys, level1Space);
+                AddSendSteps(steps, lineItem.ItemLeadingKeys, $"{level1Space} 开始前按键 ");
             }
 
             // 这一段自己的填充后延迟，和主表不一样时才写出来（一样的话开头那行已经说过）
-            var paste = $"{level1Space} 粘贴「{Shorten(lineItem.TextData)}」";
-            if (lineItem.LineAfterFillDelay != item.PasteDelayMs)
+            var paste = $"{level1Space} 填充. (复制, 等待 {item.PasteDelayMs} 毫秒, 粘贴).「{Shorten(lineItem.TextData)}」";
+            steps.Add(paste);
+
+            if (lineItem.LineAfterFillDelay > 0)
             {
-                paste += $"{level1Space} (先等 {lineItem.LineAfterFillDelay} 毫秒)";
+                steps.Add($"{level1Space} 填充后等待 {lineItem.LineAfterFillDelay} 毫秒");
             }
 
-            steps.Add(paste);
 
             if (i == values.Count - 1)
             {
@@ -386,7 +388,7 @@ public class FillTextHelper
             }
         }
 
-        AddSendSteps(steps, item.LastFieldKeys);
+        AddSendSteps(steps, item.LastFieldKeys, "结束后按键 ");
 
         var flow = string.Join(
             Environment.NewLine,
@@ -401,7 +403,7 @@ public class FillTextHelper
     /// 按键一个组合一步，和 <see cref="SendKeys"/> 里挨个发出去是对应的。
     /// 写法有问题的会显示成 <c>⚠ ...</c>，正好在流程里就能看出是哪一步。
     /// </summary>
-    private static void AddSendSteps(List<string> steps, IReadOnlyList<string> keys, string levelSpace = "")
+    private static void AddSendSteps(List<string> steps, IReadOnlyList<string> keys, string levelSpace)
     {
         if (keys == null)
         {
