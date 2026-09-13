@@ -1,0 +1,43 @@
+﻿name: Build windows plugin package
+
+on:
+  push:
+    branches: [ "main" ]
+    tags:
+      - '*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Setup MSBuild.exe
+        uses: microsoft/setup-msbuild@v3
+
+      - name: Execute release.ps1
+        run: ./release.ps1
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v7
+        if: github.ref_type == 'tag'
+        with:
+          name: FillTextToWindows
+          path: Flow.Launcher.Plugin.FillTextToWindows/bin/FillTextToWindows.zip
+
+      - name: Release artifacts
+        uses: softprops/action-gh-release@v3
+        if: github.ref_type == 'tag'
+        # prerelease: 
+        with:
+          files: Flow.Launcher.Plugin.FillTextToWindows/bin/FillTextToWindows.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
