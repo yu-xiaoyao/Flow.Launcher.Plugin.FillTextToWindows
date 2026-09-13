@@ -231,7 +231,7 @@ public class FillTextHelper
         var values = lineTextList.Select(lineText => new FillTextLineItem
         {
             LineBeforeFillDelay = 0,
-            LineAfterFillDelay = settings.PasteDelayMs,
+            LineAfterFillDelay = 0,
             ItemLeadingKeys = new List<string>(),
             NextFieldKeys = new List<string>(),
             ItemLastFieldKeys = new List<string>(),
@@ -339,27 +339,27 @@ public class FillTextHelper
 
         if (item.BeforeFillDelayMs > 0)
         {
-            steps.Add($"开始前等待 {item.BeforeFillDelayMs} 毫秒");
+            steps.Add($"填充前等待 {item.BeforeFillDelayMs} 毫秒");
         }
 
-        AddSendSteps(steps, item.LeadingKeys, "开始前按键 ");
+        AddSendSteps(steps, item.LeadingKeys, "填充前按键 ");
 
         var values = item.Values ?? new List<FillTextLineItem>();
 
         for (var i = 0; i < values.Count; i++)
         {
             var lineItem = values[i];
-            var level1Space = $"->行: {i + 1}.";
+            var level1Space = $"->行: {i + 1}.\t";
             // 这一段自己的填充前延迟
             if (lineItem.LineBeforeFillDelay > 0)
             {
-                steps.Add($"{level1Space} 开始前等待 {lineItem.LineBeforeFillDelay} 毫秒");
+                steps.Add($"{level1Space} 填充前等待 {lineItem.LineBeforeFillDelay} 毫秒");
             }
 
             // 开始前按键只认第一段的，这里和执行那边保持一致
             if (i == 0)
             {
-                AddSendSteps(steps, lineItem.ItemLeadingKeys, $"{level1Space} 开始前按键 ");
+                AddSendSteps(steps, lineItem.ItemLeadingKeys, $"{level1Space} 填充前按键 ");
             }
 
             // 这一段自己的填充后延迟，和主表不一样时才写出来（一样的话开头那行已经说过）
@@ -374,7 +374,7 @@ public class FillTextHelper
 
             if (i == values.Count - 1)
             {
-                AddSendSteps(steps, lineItem.ItemLastFieldKeys, level1Space);
+                AddSendSteps(steps, lineItem.ItemLastFieldKeys, $"{level1Space} 切换按键 ");
             }
             else
             {
@@ -388,11 +388,11 @@ public class FillTextHelper
             }
         }
 
-        AddSendSteps(steps, item.LastFieldKeys, "结束后按键 ");
+        AddSendSteps(steps, item.LastFieldKeys, "填充后按键 ");
 
         var flow = string.Join(
             Environment.NewLine,
-            steps.Select((step, index) => $"{index + 1}. {step}"));
+            steps.Select((step, index) => $"{index + 1}\t. {step}"));
 
         var delays = DescribeDelays(item);
 
@@ -410,6 +410,7 @@ public class FillTextHelper
             return;
         }
 
+        var transferKeys = new List<string>();
         foreach (var key in keys)
         {
             if (string.IsNullOrWhiteSpace(key))
@@ -417,7 +418,15 @@ public class FillTextHelper
                 continue;
             }
 
-            steps.Add(levelSpace + "按 " + KeyParser.Describe(new[] { key }));
+            transferKeys.Add(KeyParser.DescribeText(key));
+
+            // steps.Add(levelSpace + " 按 " + KeyParser.Describe(new[] { key }));
+        }
+
+        if (transferKeys.Count > 0)
+        {
+            var fullKeyName = string.Join(" , ", transferKeys);
+            steps.Add($"{levelSpace} 按 [ {fullKeyName} ]");
         }
     }
 

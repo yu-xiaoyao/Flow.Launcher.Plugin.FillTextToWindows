@@ -20,9 +20,9 @@ namespace Flow.Launcher.Plugin.FillTextToWindows
 
         private int _beforeFillDelayMs;
 
-        private int _pasteDelayMs = 40;
+        private int _pasteDelayMs = 20;
 
-        private int _keyDelayMs = 40;
+        private int _keyDelayMs = 20;
 
         private bool _restoreClipboard;
 

@@ -254,7 +254,7 @@
                                                         VerticalAlignment="Center"
                                                         FontSize="12"
                                                         Foreground="#FF6B6B6B"
-                                                        Text="填充后按键" />
+                                                        Text="切换按键" />
                                                     <TextBox
                                                         Width="88"
                                                         Padding="3,2"
@@ -286,7 +286,7 @@
                                                         VerticalAlignment="Center"
                                                         FontSize="12"
                                                         Foreground="#FF6B6B6B"
-                                                        Text="结束后按键" />
+                                                        Text="填充后按键" />
                                                     <TextBox
                                                         Width="88"
                                                         Padding="3,2"
@@ -345,13 +345,13 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <!-- 开始前按键 -->
+                        <!-- 填充前按键 -->
                         <TextBlock
                             Grid.Row="0"
                             Grid.Column="0"
                             Margin="0,0,10,4"
                             VerticalAlignment="Center"
-                            Text="开始前按键" />
+                            Text="填充前按键" />
                         <StackPanel
                             Grid.Row="0"
                             Grid.Column="1"
@@ -386,7 +386,7 @@
                             Grid.Column="0"
                             Margin="0,0,10,4"
                             VerticalAlignment="Center"
-                            Text="切换输入框" />
+                            Text="切换按键" />
                         <StackPanel
                             Grid.Row="1"
                             Grid.Column="1"
@@ -415,13 +415,13 @@
                             Foreground="#FF6B6B6B"
                             Text="{Binding Draft.NextFieldKeys.Preview}" />
 
-                        <!-- 结束后按键 -->
+                        <!-- 填充后按键 -->
                         <TextBlock
                             Grid.Row="2"
                             Grid.Column="0"
                             Margin="0,0,10,4"
                             VerticalAlignment="Center"
-                            Text="结束后按键" />
+                            Text="填充后按键" />
                         <StackPanel
                             Grid.Row="2"
                             Grid.Column="1"
@@ -474,7 +474,7 @@
                             Grid.Column="0"
                             Margin="0,0,10,4"
                             VerticalAlignment="Center"
-                            Text="开始前等待" />
+                            Text="填充前等待" />
                         <DockPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,4">
                             <TextBlock
                                 DockPanel.Dock="Right"
