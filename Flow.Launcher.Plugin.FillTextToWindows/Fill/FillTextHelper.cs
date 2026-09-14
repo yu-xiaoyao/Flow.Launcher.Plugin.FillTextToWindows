@@ -111,6 +111,7 @@ public class FillTextHelper
         //   开始前按键：主表发完接着发这一行的，整批只在第一个粘贴之前发一次；
         //   粘贴后按键：非空就顶掉主表的，空的话继续用主表的；
         //   最后一段之后按键：发在这个循环之后、主表的最后一段之后按键之前。
+        // 内容为空的段只跳过粘贴那一步，延迟和按键照常执行。
         for (var i = 0; i < values.Count; i++)
         {
             var lineItem = values[i];
@@ -120,12 +121,21 @@ public class FillTextHelper
             if (!success) return;
 
             // 发送前执行按键
-            success = await SendKeys(metadata, lineItem.ItemLeadingKeys, keyDelayMs);
+            success = await SendKeys(metadata, lineItem.LineLeadingKeys, keyDelayMs);
             if (!success) return;
 
             // 开始复制/粘贴.
-            success = await FillText(metadata, lineItem.TextData, item.PasteDelayMs);
-            if (!success) return;
+            // 内容为空的这一段只跳过「粘贴」这一步，这一段的延迟和按键照常执行：
+            // 用来空过某个输入框（不填但要 Tab 过去），或者插一步纯按键。
+            if (!string.IsNullOrEmpty(lineItem.TextData))
+            {
+                success = await FillText(metadata, lineItem.TextData, item.PasteDelayMs);
+                if (!success) return;
+            }
+            else
+            {
+                InnerLogger.Logger.Trace($"第 {i + 1} 段内容为空，跳过粘贴，只执行按键。");
+            }
 
             // line after key delay
             success = await WaitMills(metadata, lineItem.LineAfterFillDelay);
@@ -136,11 +146,11 @@ public class FillTextHelper
             if (isLast)
             {
                 // last
-                success = await SendKeys(metadata, lineItem.ItemLastFieldKeys, keyDelayMs);
+                success = await SendKeys(metadata, lineItem.LineLastFieldKeys, keyDelayMs);
             }
             else
             {
-                var itemNextFieldKeys = lineItem.NextFieldKeys;
+                var itemNextFieldKeys = lineItem.LineNextFieldKeys;
                 if (itemNextFieldKeys == null || itemNextFieldKeys.Count == 0)
                 {
                     itemNextFieldKeys = item.NextFieldKeys;
@@ -229,9 +239,9 @@ public class FillTextHelper
         {
             LineBeforeFillDelay = 0,
             LineAfterFillDelay = 0,
-            ItemLeadingKeys = new List<string>(),
-            NextFieldKeys = new List<string>(),
-            ItemLastFieldKeys = new List<string>(),
+            LineLeadingKeys = new List<string>(),
+            LineNextFieldKeys = new List<string>(),
+            LineLastFieldKeys = new List<string>(),
             TextData = lineText
         }).ToList();
 
@@ -255,9 +265,9 @@ public class FillTextHelper
             TextData = line.Value,
             LineBeforeFillDelay = LineBeforeFillDelay(useLineSettings, line.LineBeforeFillDelay),
             LineAfterFillDelay = LineAfterFillDelay(useLineSettings, line.LineAfterFillDelay),
-            ItemLeadingKeys = LineKeys(useLineSettings, line.LineLeadingKeys),
-            NextFieldKeys = LineKeys(useLineSettings, line.LineNextFieldKeys),
-            ItemLastFieldKeys = LineKeys(useLineSettings, line.LineLastFieldKeys),
+            LineLeadingKeys = LineKeys(useLineSettings, line.LineLeadingKeys),
+            LineNextFieldKeys = LineKeys(useLineSettings, line.LineNextFieldKeys),
+            LineLastFieldKeys = LineKeys(useLineSettings, line.LineLastFieldKeys),
         }).ToList();
 
         return BuildFillTextItem(settings, values);
@@ -354,10 +364,13 @@ public class FillTextHelper
             }
 
             // 开始前按键只认第一段的，这里和执行那边保持一致
-            AddSendSteps(steps, lineItem.ItemLeadingKeys, $"{level1Space} 填充前按键 ");
+            AddSendSteps(steps, lineItem.LineLeadingKeys, $"{level1Space} 填充前按键 ");
 
-            // 这一段自己的填充后延迟，和主表不一样时才写出来（一样的话开头那行已经说过）
-            var paste = $"{level1Space} 填充. (复制, 等待 {item.PasteDelayMs} 毫秒, 粘贴).「{Shorten(lineItem.TextData)}」";
+            // 这一段自己的填充后延迟，和主表不一样时才写出来（一样的话开头那行已经说过）。
+            // 内容为空的那一段没有粘贴这一步，流程里写清楚，免得看成「粘了个空的进去」。
+            var paste = string.IsNullOrEmpty(lineItem.TextData)
+                ? $"{level1Space} 内容为空：跳过粘贴，只执行按键"
+                : $"{level1Space} 填充. (复制, 等待 {item.PasteDelayMs} 毫秒, 粘贴).「{Shorten(lineItem.TextData)}」";
             steps.Add(paste);
 
             if (lineItem.LineAfterFillDelay > 0)
@@ -368,11 +381,11 @@ public class FillTextHelper
 
             if (i == values.Count - 1)
             {
-                AddSendSteps(steps, lineItem.ItemLastFieldKeys, $"{level1Space} 切换按键 ");
+                AddSendSteps(steps, lineItem.LineLastFieldKeys, $"{level1Space} 切换按键 ");
             }
             else
             {
-                var nextFieldKeys = lineItem.NextFieldKeys;
+                var nextFieldKeys = lineItem.LineNextFieldKeys;
                 if (nextFieldKeys == null || nextFieldKeys.Count == 0)
                 {
                     nextFieldKeys = item.NextFieldKeys;

@@ -136,13 +136,14 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
         }
 
         /// <summary>
-        /// 打包成记录里的一段。
+        /// 打包成记录里的一段。内容原样存下来，不 Trim：
+        /// 前后空格是有意义的输入，而留空也是一段合法的数据（执行时只发按键、不粘贴）。
         /// </summary>
         public FillEntryLine ToLine()
         {
             return new FillEntryLine
             {
-                Value = (Text ?? string.Empty).Trim(),
+                Value = Text ?? string.Empty,
                 LineBeforeFillDelay = LineBeforeFillDelay.Value,
                 LineAfterFillDelay = LineAfterFillDelay.Value,
                 LineLeadingKeys = CopyKeys(_lineLeadingKeys),

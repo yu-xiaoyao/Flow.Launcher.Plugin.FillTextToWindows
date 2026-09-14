@@ -27,21 +27,21 @@ public class FillTextLineItem
     /// 开始前按键。主表 <see cref="FillTextItem.LeadingKeys"/> 先执行，接着才执行这个。
     /// 只认第一段的：开始前按键整批只在第一个粘贴之前发一次。
     /// </summary>
-    public IReadOnlyList<string> ItemLeadingKeys { get; set; }
+    public IReadOnlyList<string> LineLeadingKeys { get; set; }
 
     /// <summary>
     /// 粘贴这一行之后发送的按键，用来跳到下一个输入框。
     /// 非空就顶掉主表的 <see cref="FillTextItem.NextFieldKeys"/>，空的话还用主表的。
     /// </summary>
-    public IReadOnlyList<string> NextFieldKeys { get; set; }
+    public IReadOnlyList<string> LineNextFieldKeys { get; set; }
 
     /// <summary>
     /// 最后一段粘贴之后的按键。先执行这个，再执行主表的 <see cref="FillTextItem.LastFieldKeys"/>。
     /// </summary>
-    public IReadOnlyList<string> ItemLastFieldKeys { get; set; }
+    public IReadOnlyList<string> LineLastFieldKeys { get; set; }
 
     /// <summary>
-    /// 数据
+    /// 数据。空字符串表示这一段不粘贴，只执行延迟和按键，用来空过某个输入框。
     /// </summary>
     public string TextData { get; set; }
 }

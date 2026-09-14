@@ -137,7 +137,8 @@
                                                 <TextBox
                                                     Grid.Column="1"
                                                     Padding="4,3"
-                                                    Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" />
+                                                    Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
+                                                    ToolTip="这一段要粘贴的内容，前后空格按原样保留。留空表示这一段不粘贴，只有延迟和按键照常执行——用来空过某个输入框" />
                                                 <Button
                                                     Grid.Column="2"
                                                     Width="52"

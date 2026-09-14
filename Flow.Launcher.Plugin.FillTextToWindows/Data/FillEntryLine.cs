@@ -17,7 +17,11 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
     /// </summary>
     public sealed class FillEntryLine
     {
-        /// <summary>这一段要粘贴的内容。</summary>
+        /// <summary>
+        /// 这一段要粘贴的内容。**可以是空字符串**：空的这一段不写剪贴板、不按 Ctrl+V，
+        /// 但这一段的延迟和按键照常执行，用来「空过」某个输入框，或者插一步纯按键。
+        /// 前后空格原样保留，不做 Trim。
+        /// </summary>
         public string Value { get; set; } = string.Empty;
 
         /// <summary>

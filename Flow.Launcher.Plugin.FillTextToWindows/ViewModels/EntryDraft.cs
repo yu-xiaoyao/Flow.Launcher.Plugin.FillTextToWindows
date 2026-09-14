@@ -118,21 +118,21 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
         {
             get
             {
-                var count = ParseValues().Count;
-
                 if (Values.Count == 0)
                 {
                     return "还没有数据，点下面的「+ 添加数据」";
                 }
 
-                if (count == 0)
+                var summary = $"共 {Values.Count} 段，从上到下依次执行";
+
+                var emptyCount = Values.Count(item => string.IsNullOrEmpty(item.Text));
+                if (emptyCount == 0)
                 {
-                    return "现在全是空白，粘贴时会跳过";
+                    return summary;
                 }
 
-                return count == Values.Count
-                    ? $"共 {count} 段，从上到下依次粘贴"
-                    : $"共 {count} 段（空白项已忽略），从上到下依次粘贴";
+                // 空内容不再是「跳过这一段」，而是「这一段只发按键」——用来空过某个输入框
+                return $"{summary}（其中 {emptyCount} 段内容为空，只发按键、不粘贴）";
             }
         }
 
@@ -243,30 +243,12 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
         }
 
         /// <summary>
-        /// 按界面顺序取出真正要保存的数据行（内容和每一行自己的按键），空白项直接跳过。
+        /// 按界面顺序取出要保存的数据行（内容和每一行自己的按键），一行都不跳过：
+        /// 内容留空也是一段合法的数据，执行时只发按键、不粘贴。
         /// </summary>
         public List<FillEntryLine> ParseLines()
         {
-            var lines = new List<FillEntryLine>();
-
-            foreach (var item in Values)
-            {
-                var line = item.ToLine();
-                if (line.Value.Length > 0)
-                {
-                    lines.Add(line);
-                }
-            }
-
-            return lines;
-        }
-
-        /// <summary>
-        /// 只要内容，界面上用来数这一条有几段。
-        /// </summary>
-        public List<string> ParseValues()
-        {
-            return ParseLines().Select(line => line.Value).ToList();
+            return Values.Select(item => item.ToLine()).ToList();
         }
 
         /// <summary>
@@ -276,8 +258,11 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
         {
             if (entry == null)
             {
+                // 新建时先摆一个空框，点开就能直接敲：框还是空的、设置也没动过，就算「什么都没改」。
+                // 判的是「空字符串」不是「空白」：留空现在也是合法的一段，但敲了个空格进去说明
+                // 真的想存这一段（会原样粘出去），关窗口该问就问。
                 return string.IsNullOrWhiteSpace(Name)
-                    && Values.All(item => string.IsNullOrWhiteSpace(item.Text))
+                    && Values.All(item => string.IsNullOrEmpty(item.Text))
                     && !UseCustomSettings
                     && !UseLineSettings
                     && BeforeFillDelay.Value == null

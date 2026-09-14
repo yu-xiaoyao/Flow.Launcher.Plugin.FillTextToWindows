@@ -152,7 +152,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
 
             if (entry.Values.Count == 0)
             {
-                StatusMessage = "请至少填一段数据，空白的输入框会被跳过";
+                StatusMessage = "请至少加一段数据（内容可以留空，这样这段只执行按键、不粘贴）";
                 return;
             }
 

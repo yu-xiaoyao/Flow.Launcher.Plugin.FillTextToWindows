@@ -390,9 +390,10 @@ namespace Flow.Launcher.Plugin.FillTextToWindows
         {
             const int maxLength = 24;
 
+            // 空内容不是「没东西可粘」而是「这一段只发按键」，直接留白会被看成一串箭头
             if (string.IsNullOrEmpty(value))
             {
-                return string.Empty;
+                return "（空）";
             }
 
             return value.Length <= maxLength ? value : value.Substring(0, maxLength) + "…";
