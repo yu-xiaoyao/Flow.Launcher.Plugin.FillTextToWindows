@@ -186,10 +186,10 @@
                                                         Text="{Binding LineBeforeFillDelay.Error}" />
                                                 </StackPanel>
 
+                                                <!-- Visibility="{Binding IsFirst, Converter={StaticResource BoolToVisibility}}" -->
                                                 <StackPanel
                                                     Margin="0,0,14,4"
-                                                    Orientation="Horizontal"
-                                                    Visibility="{Binding IsFirst, Converter={StaticResource BoolToVisibility}}">
+                                                    Orientation="Horizontal">
                                                     <TextBlock
                                                         Margin="0,0,4,0"
                                                         VerticalAlignment="Center"

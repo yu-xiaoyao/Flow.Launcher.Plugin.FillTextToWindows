@@ -119,12 +119,9 @@ public class FillTextHelper
             success = await WaitMills(metadata, lineItem.LineBeforeFillDelay);
             if (!success) return;
 
-            if (i == 0)
-            {
-                // 发送前执行按键
-                success = await SendKeys(metadata, lineItem.ItemLeadingKeys, keyDelayMs);
-                if (!success) return;
-            }
+            // 发送前执行按键
+            success = await SendKeys(metadata, lineItem.ItemLeadingKeys, keyDelayMs);
+            if (!success) return;
 
             // 开始复制/粘贴.
             success = await FillText(metadata, lineItem.TextData, item.PasteDelayMs);
@@ -357,10 +354,7 @@ public class FillTextHelper
             }
 
             // 开始前按键只认第一段的，这里和执行那边保持一致
-            if (i == 0)
-            {
-                AddSendSteps(steps, lineItem.ItemLeadingKeys, $"{level1Space} 填充前按键 ");
-            }
+            AddSendSteps(steps, lineItem.ItemLeadingKeys, $"{level1Space} 填充前按键 ");
 
             // 这一段自己的填充后延迟，和主表不一样时才写出来（一样的话开头那行已经说过）
             var paste = $"{level1Space} 填充. (复制, 等待 {item.PasteDelayMs} 毫秒, 粘贴).「{Shorten(lineItem.TextData)}」";
