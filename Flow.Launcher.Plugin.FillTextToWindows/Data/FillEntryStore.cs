@@ -14,6 +14,10 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
     /// 两张表：<c>FillEntries</c> 存记录本身，<c>FillEntryLines</c> 存那条记录的每一段数据，
     /// 用 <c>SortOrder</c> 记粘贴顺序。
     /// </para>
+    /// <para>
+    /// 两张表之间没有数据库层面的外键，<c>FillEntryLines.EntryId</c> 只是一列普通整数：
+    /// 行数据跟着记录一起维护（保存时整体替换、删除时先删行），不靠 <c>ON DELETE CASCADE</c>。
+    /// </para>
     /// </summary>
     public sealed class FillEntryStore
     {
@@ -34,7 +38,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
 
                                      CREATE TABLE IF NOT EXISTS FillEntryLines (
                                          Id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-                                         EntryId             INTEGER NOT NULL REFERENCES FillEntries (Id) ON DELETE CASCADE,
+                                         EntryId             INTEGER NOT NULL,
                                          Value               TEXT    NOT NULL,
                                          LineBeforeFillDelay INTEGER NULL,
                                          LineAfterFillDelay  INTEGER NULL,
@@ -48,23 +52,6 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                                          ON FillEntryLines (EntryId, SortOrder);
                                      """;
 
-        /// <summary>
-        /// 现在的表结构里必须有的列。已经建出来的表少了任何一列就整个删掉重建 —— 不做数据迁移，
-        /// 结构改过之后把记录重新录一遍就行。
-        /// </summary>
-        private static readonly (string Table, string[] Columns)[] RequiredColumns =
-        {
-            ("FillEntries", new[]
-            {
-                "Id", "Name", "UseCustomSettings", "UseLineSettings", "LeadingKeys", "NextFieldKeys",
-                "LastFieldKeys", "BeforeFillDelayMs", "PasteDelayMs", "KeyDelayMs", "RestoreClipboard",
-            }),
-            ("FillEntryLines", new[]
-            {
-                "Id", "EntryId", "Value", "LineBeforeFillDelay", "LineAfterFillDelay", "LeadingKeys",
-                "NextFieldKeys", "LastFieldKeys", "SortOrder",
-            }),
-        };
 
         /// <summary>
         /// 查记录时连行数据一起带出来，行按 <c>SortOrder</c> 排好序。
@@ -93,6 +80,8 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
 
         private readonly string _connectionString;
 
+        public string DatabasePath { get; }
+
         public FillEntryStore(string databasePath)
         {
             if (string.IsNullOrWhiteSpace(databasePath))
@@ -108,15 +97,10 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             }.ToString();
         }
 
-        public string DatabasePath { get; }
 
         /// <summary>
         /// 建库建表，可以重复调用。
         /// </summary>
-        /// <remarks>
-        /// 不做数据迁移：表已经在了但结构对不上现在的定义（老版本存的列不一样），
-        /// 就把两张表删掉重建，记录重新录一遍。
-        /// </remarks>
         public void EnsureCreated()
         {
             var directory = Path.GetDirectoryName(DatabasePath);
@@ -126,14 +110,6 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             }
 
             using var connection = Open();
-
-            if (NeedsRebuild(connection))
-            {
-                // 先删从表，主表被外键引用着，顺序反了会删不掉
-                Execute(connection, "DROP TABLE IF EXISTS FillEntryLines;");
-                Execute(connection, "DROP TABLE IF EXISTS FillEntries;");
-            }
-
             Execute(connection, DbDDL);
         }
 
@@ -262,7 +238,6 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             using var connection = Open();
             using var transaction = connection.BeginTransaction();
 
-            // 外键是 ON DELETE CASCADE，这里显式删一遍，免得有人把 pragma 关掉后留下孤儿行
             DeleteLines(connection, transaction, id);
 
             using (var command = connection.CreateCommand())
@@ -280,9 +255,6 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
         {
             var connection = new SqliteConnection(_connectionString);
             connection.Open();
-
-            // ON DELETE CASCADE 要靠这个才生效，而且它是连接级的，所以每次开连接都得设
-            Execute(connection, "PRAGMA foreign_keys = ON;");
 
             return connection;
         }
@@ -380,10 +352,6 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             return JsonSerializer.Serialize(list, SerializerOptions);
         }
 
-        /// <summary>
-        /// 读按键配置。正常情况就是一个 JSON 数组，读到别的（老版本写进去的整串、手改坏了的）
-        /// 也按逗号拆开当数组用，别让一条脏数据把整个列表读崩。
-        /// </summary>
         public static List<string> ParseJsonArray(string json)
         {
             if (string.IsNullOrWhiteSpace(json))
@@ -392,15 +360,6 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             }
 
             var text = json.Trim();
-
-            if (text[0] != '[')
-            {
-                return text
-                    .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(value => value.Trim())
-                    .Where(value => value.Length > 0)
-                    .ToList();
-            }
 
             try
             {
@@ -439,7 +398,7 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             var lineLeadingColumn = reader.GetOrdinal("LineLeadingKeys");
             var lineNextColumn = reader.GetOrdinal("LineNextFieldKeys");
             var lineLastColumn = reader.GetOrdinal("LineLastFieldKeys");
-            
+
             var entries = new List<FillEntry>();
             FillEntry current = null;
 
@@ -503,32 +462,6 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             return reader.IsDBNull(column) ? null : reader.GetInt64(column) != 0;
         }
 
-        /// <summary>
-        /// 表已经建出来了，但少了几列（老版本的表结构）—— 这种库整个丢掉重建。
-        /// <para>
-        /// 表还没建出来的不算：接着跑 <see cref="DbDDL"/> 就照新的结构建好了。
-        /// </para>
-        /// </summary>
-        private static bool NeedsRebuild(SqliteConnection connection)
-        {
-            foreach (var (table, columns) in RequiredColumns)
-            {
-                if (!TableExists(connection, table))
-                {
-                    continue;
-                }
-
-                foreach (var column in columns)
-                {
-                    if (!HasColumn(connection, table, column))
-                    {
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
 
         private static bool TableExists(SqliteConnection connection, string table)
         {

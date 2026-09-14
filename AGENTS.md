@@ -69,8 +69,9 @@ Flow Launcher 的结果对应了一个 List<String> 结果, 我想将这个结�
   主表 `FillEntries` 存名称、三个按键、两个开关和四个可空的延迟/剪贴板字段，从表 `FillEntryLines`
   （`EntryId` / `Value` / `LineBeforeFillDelay` / `LineAfterFillDelay` / `LeadingKeys` / `NextFieldKeys` /
   `LastFieldKeys` / `SortOrder`）
-  存每一段数据、这一段的两个延迟和按键，`SortOrder` 从 1 开始就是粘贴顺序。更新记录时行数据整体删掉重插，删除记录靠
-  `ON DELETE CASCADE`（所以每次开连接都会 `PRAGMA foreign_keys = ON`）。
+  存每一段数据、这一段的两个延迟和按键，`SortOrder` 从 1 开始就是粘贴顺序。两张表之间**没有数据库层面的外键**，
+  `EntryId` 只是一列普通整数：更新记录时行数据整体删掉重插，删除记录时先 `DELETE FROM FillEntryLines` 再删主表
+  （和上面那步一样在同一个事务里）。
   从表那两个延迟列跟着 `FillEntryLine` 一起改过两次名，现在叫 `LineBeforeFillDelay` / `LineAfterFillDelay`；
   老库会被 `RequiredColumns` 当成缺列整张重建，记录要重新录一遍。
   数据库放在 `PluginMetadata.PluginSettingsDirectoryPath` 下（跟着 Flow Launcher 的数据目录走，便携模式也对）。
@@ -124,7 +125,7 @@ Flow Launcher 的结果对应了一个 List<String> 结果, 我想将这个结�
   注意设置面板上的数字框还是直接绑 `Settings.XxxDelayMs`（全局值不能为空，没有「留空」这一说），
   所以清空那个框同样是「保留旧值」，没跟记录那边一样做 `DelayEditor`。
 - **表结构变了就重建，不做迁移**：`EnsureCreated` 拿 `RequiredColumns` 里那份列清单查 `pragma_table_info`，
-  表已经在了但缺列就 `DROP TABLE` 重建（先删从表，主表被外键引用着，顺序反了删不掉）。
+  表已经在了但缺列就 `DROP TABLE` 重建。
   也就是说改表结构不用写迁移代码，老库直接丢掉、记录重新录一遍就行；表还没建出来的新库不算，`DbDDL` 直接建。
 - **管理页面是独立窗口**：`Views/ManagementWindow.xaml`。**故意不设 Owner** —— Flow Launcher 的主窗口
   在 Action 返回 true 之后会被隐藏，设了 Owner 的话这个窗口会跟着一起消失。
