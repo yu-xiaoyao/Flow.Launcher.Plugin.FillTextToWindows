@@ -42,9 +42,9 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                                          Value               TEXT    NOT NULL,
                                          LineBeforeFillDelay INTEGER NULL,
                                          LineAfterFillDelay  INTEGER NULL,
-                                         LeadingKeys         TEXT    NOT NULL DEFAULT '',
-                                         NextFieldKeys       TEXT    NOT NULL DEFAULT '',
-                                         LastFieldKeys       TEXT    NOT NULL DEFAULT '',
+                                         LineLeadingKeys         TEXT    NOT NULL DEFAULT '',
+                                         LineNextFieldKeys       TEXT    NOT NULL DEFAULT '',
+                                         LineLastFieldKeys       TEXT    NOT NULL DEFAULT '',
                                          SortOrder           INTEGER NOT NULL
                                      );
 
@@ -65,8 +65,8 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             "SELECT e.Id, e.Name, e.UseCustomSettings, e.UseLineSettings, e.LeadingKeys, e.NextFieldKeys, " +
             "e.LastFieldKeys, e.BeforeFillDelayMs, e.PasteDelayMs, e.KeyDelayMs, e.RestoreClipboard, " +
             "l.Value, l.LineBeforeFillDelay, l.LineAfterFillDelay, " +
-            "l.LeadingKeys AS LineLeadingKeys, l.NextFieldKeys AS LineNextFieldKeys, " +
-            "l.LastFieldKeys AS LineLastFieldKeys " +
+            "l.LineLeadingKeys, l.LineNextFieldKeys, " +
+            "l.LineLastFieldKeys " +
             "FROM FillEntries e LEFT JOIN FillEntryLines l ON l.EntryId = e.Id ";
 
         /// <summary>
@@ -291,8 +291,8 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
             command.CommandText =
                 """
                 INSERT INTO FillEntryLines
-                    (EntryId, Value, LineBeforeFillDelay, LineAfterFillDelay, LeadingKeys, NextFieldKeys,
-                     LastFieldKeys, SortOrder)
+                    (EntryId, Value, LineBeforeFillDelay, LineAfterFillDelay, LineLeadingKeys, LineNextFieldKeys,
+                     LineLastFieldKeys, SortOrder)
                 VALUES (@entryId, @value, @lineBeforeFillDelay, @lineAfterFillDelay, @leading, @next, @last,
                         @sortOrder);
                 """;
@@ -315,9 +315,9 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                 valueParameter.Value = line.Value ?? string.Empty;
                 lineBeforeFillDelayParameter.Value = ToDbValue(line.LineBeforeFillDelay);
                 lineAfterFillDelayParameter.Value = ToDbValue(line.LineAfterFillDelay);
-                leadingParameter.Value = ToJsonArray(line.LeadingKeys) ?? "[]";
-                nextParameter.Value = ToJsonArray(line.NextFieldKeys) ?? "[]";
-                lastParameter.Value = ToJsonArray(line.LastFieldKeys) ?? "[]";
+                leadingParameter.Value = ToJsonArray(line.LineLeadingKeys) ?? "[]";
+                nextParameter.Value = ToJsonArray(line.LineNextFieldKeys) ?? "[]";
+                lastParameter.Value = ToJsonArray(line.LineLastFieldKeys) ?? "[]";
                 sortOrderParameter.Value = i + 1; // 排序号从 1 开始
                 command.ExecuteNonQuery();
             }
@@ -434,9 +434,9 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                         Value = reader.GetString(valueColumn),
                         LineBeforeFillDelay = ReadNullableInt(reader, lineBeforeFillDelayColumn),
                         LineAfterFillDelay = ReadNullableInt(reader, lineAfterFillDelayColumn),
-                        LeadingKeys = ReadKeys(reader, lineLeadingColumn),
-                        NextFieldKeys = ReadKeys(reader, lineNextColumn),
-                        LastFieldKeys = ReadKeys(reader, lineLastColumn),
+                        LineLeadingKeys = ReadKeys(reader, lineLeadingColumn),
+                        LineNextFieldKeys = ReadKeys(reader, lineNextColumn),
+                        LineLastFieldKeys = ReadKeys(reader, lineLastColumn),
                     });
                 }
             }

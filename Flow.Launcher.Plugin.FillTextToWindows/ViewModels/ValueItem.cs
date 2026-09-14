@@ -21,18 +21,18 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
 
         private bool _isLast;
 
-        private List<string> _leadingKeys = new();
+        private List<string> _lineLeadingKeys = new();
 
-        private List<string> _nextFieldKeys = new();
+        private List<string> _lineNextFieldKeys = new();
 
-        private List<string> _lastFieldKeys = new();
+        private List<string> _lineLastFieldKeys = new();
 
         public ValueItem()
         {
             // 三个编辑框都写回自己的字段：直接敲、点「录制」走的都是这条路
-            LeadingKeys = new KeyListEditor(_leadingKeys, keys => _leadingKeys = keys);
-            NextFieldKeys = new KeyListEditor(_nextFieldKeys, keys => _nextFieldKeys = keys);
-            LastFieldKeys = new KeyListEditor(_lastFieldKeys, keys => _lastFieldKeys = keys);
+            LeadingKeys = new KeyListEditor(_lineLeadingKeys, keys => _lineLeadingKeys = keys);
+            NextFieldKeys = new KeyListEditor(_lineNextFieldKeys, keys => _lineNextFieldKeys = keys);
+            LastFieldKeys = new KeyListEditor(_lineLastFieldKeys, keys => _lineLastFieldKeys = keys);
 
             // 行上的延迟没有固定的全局值可跟，留空就是不额外等
             LineBeforeFillDelay = new DelayEditor(null, null);
@@ -120,9 +120,9 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
         {
             Text = line?.Value ?? string.Empty;
 
-            _leadingKeys = CopyKeys(line?.LeadingKeys);
-            _nextFieldKeys = CopyKeys(line?.NextFieldKeys);
-            _lastFieldKeys = CopyKeys(line?.LastFieldKeys);
+            _lineLeadingKeys = CopyKeys(line?.LineLeadingKeys);
+            _lineNextFieldKeys = CopyKeys(line?.LineNextFieldKeys);
+            _lineLastFieldKeys = CopyKeys(line?.LineLastFieldKeys);
 
             LineBeforeFillDelay.Load(line?.LineBeforeFillDelay, null);
 
@@ -130,9 +130,9 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
             LineAfterFillDelay.Load(line?.LineAfterFillDelay, null);
 
             // 是外面换了数据，这里只同步原文，别写回去（KeyListEditor.Load 就是这么设计的）
-            LeadingKeys.Load(_leadingKeys);
-            NextFieldKeys.Load(_nextFieldKeys);
-            LastFieldKeys.Load(_lastFieldKeys);
+            LeadingKeys.Load(_lineLeadingKeys);
+            NextFieldKeys.Load(_lineNextFieldKeys);
+            LastFieldKeys.Load(_lineLastFieldKeys);
         }
 
         /// <summary>
@@ -145,9 +145,9 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
                 Value = (Text ?? string.Empty).Trim(),
                 LineBeforeFillDelay = LineBeforeFillDelay.Value,
                 LineAfterFillDelay = LineAfterFillDelay.Value,
-                LeadingKeys = CopyKeys(_leadingKeys),
-                NextFieldKeys = CopyKeys(_nextFieldKeys),
-                LastFieldKeys = CopyKeys(_lastFieldKeys),
+                LineLeadingKeys = CopyKeys(_lineLeadingKeys),
+                LineNextFieldKeys = CopyKeys(_lineNextFieldKeys),
+                LineLastFieldKeys = CopyKeys(_lineLastFieldKeys),
             };
         }
 

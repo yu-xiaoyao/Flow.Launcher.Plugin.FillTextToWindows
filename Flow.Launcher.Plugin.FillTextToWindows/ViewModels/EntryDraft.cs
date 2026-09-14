@@ -325,9 +325,9 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.ViewModels
                 if (!string.Equals(left[i].Value ?? string.Empty, right[i].Value ?? string.Empty, StringComparison.Ordinal)
                     || left[i].LineBeforeFillDelay != right[i].LineBeforeFillDelay
                     || left[i].LineAfterFillDelay != right[i].LineAfterFillDelay
-                    || !KeysEqual(left[i].LeadingKeys, right[i].LeadingKeys)
-                    || !KeysEqual(left[i].NextFieldKeys, right[i].NextFieldKeys)
-                    || !KeysEqual(left[i].LastFieldKeys, right[i].LastFieldKeys))
+                    || !KeysEqual(left[i].LineLeadingKeys, right[i].LineLeadingKeys)
+                    || !KeysEqual(left[i].LineNextFieldKeys, right[i].LineNextFieldKeys)
+                    || !KeysEqual(left[i].LineLastFieldKeys, right[i].LineLastFieldKeys))
                 {
                     return false;
                 }

@@ -255,9 +255,9 @@ public class FillTextHelper
             TextData = line.Value,
             LineBeforeFillDelay = LineBeforeFillDelay(useLineSettings, line.LineBeforeFillDelay),
             LineAfterFillDelay = LineAfterFillDelay(useLineSettings, line.LineAfterFillDelay),
-            ItemLeadingKeys = LineKeys(useLineSettings, line.LeadingKeys),
-            NextFieldKeys = LineKeys(useLineSettings, line.NextFieldKeys),
-            ItemLastFieldKeys = LineKeys(useLineSettings, line.LastFieldKeys),
+            ItemLeadingKeys = LineKeys(useLineSettings, line.LineLeadingKeys),
+            NextFieldKeys = LineKeys(useLineSettings, line.LineNextFieldKeys),
+            ItemLastFieldKeys = LineKeys(useLineSettings, line.LineLastFieldKeys),
         }).ToList();
 
         return BuildFillTextItem(settings, values);

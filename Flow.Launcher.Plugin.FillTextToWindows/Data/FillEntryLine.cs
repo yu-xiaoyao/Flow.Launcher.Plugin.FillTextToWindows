@@ -37,17 +37,17 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
         /// 这一段粘贴之前发送的按键，接在主表的「开始前按键」后面。
         /// 只有第一段的会被执行（开始前按键整批只发一次）。
         /// </summary>
-        public List<string> LeadingKeys { get; set; } = new();
+        public List<string> LineLeadingKeys { get; set; } = new();
 
         /// <summary>
         /// 这一段粘贴之后的按键。非空时覆盖主表的「切换输入框」，空的就还用主表的。
         /// </summary>
-        public List<string> NextFieldKeys { get; set; } = new();
+        public List<string> LineNextFieldKeys { get; set; } = new();
 
         /// <summary>
         /// 最后一段粘贴之后的按键，排在主表的「最后一段之后按键」前面。
         /// </summary>
-        public List<string> LastFieldKeys { get; set; } = new();
+        public List<string> LineLastFieldKeys { get; set; } = new();
 
         /// <summary>
         /// 复制一份，编辑窗口用它当草稿，避免改到列表里的对象。
@@ -59,9 +59,9 @@ namespace Flow.Launcher.Plugin.FillTextToWindows.Data
                 Value = Value,
                 LineBeforeFillDelay = LineBeforeFillDelay,
                 LineAfterFillDelay = LineAfterFillDelay,
-                LeadingKeys = CopyKeys(LeadingKeys),
-                NextFieldKeys = CopyKeys(NextFieldKeys),
-                LastFieldKeys = CopyKeys(LastFieldKeys),
+                LineLeadingKeys = CopyKeys(LineLeadingKeys),
+                LineNextFieldKeys = CopyKeys(LineNextFieldKeys),
+                LineLastFieldKeys = CopyKeys(LineLastFieldKeys),
             };
         }
 
